@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MiniApp • Conversión de plataformas</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root{
+      --primary:#4A90E2;
+      --bg:#f5f8fb;
+      --card:#fff;
+      --text:#333;
+      --border:#dfe6ee;
+      --warning:#d84a4a;
+      --note:#8a6f00;
+    }
+    *{box-sizing:border-box}
+    body{
+      font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+      background:var(--bg);
+      margin:0;
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+    }
+    .container{
+      width:100%;
+      max-width:480px;
+      background:var(--card);
+      padding:24px 20px;
+      border-radius:16px;
+      box-shadow:0 8px 24px rgba(0,0,0,.08);
+    }
+    h2{
+      margin:0 0 14px;
+      text-align:center;
+      color:var(--primary);
+    }
+    label{
+      display:block;
+      font-weight:600;
+      color:#2f3b48;
+      margin:12px 0 6px;
+    }
+    input, select{
+      width:100%;
+      padding:12px 14px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      font-size:16px;
+      outline:none;
+      background:#fff;
+    }
+    input:focus, select:focus{
+      border-color:var(--primary);
+      box-shadow:0 0 0 3px rgba(74,144,226,.15);
+    }
+    input[readonly]{
+      background:#f4f6f9;
+      color:#1f2a33;
+      cursor:not-allowed;
+    }
+    .btn{
+      width:100%;
+      padding:12px 14px;
+      border:0;
+      border-radius:12px;
+      background:var(--primary);
+      color:#fff;
+      font-weight:700;
+      cursor:pointer;
+      margin-top:18px;
+    }
+    .btn:disabled{
+      opacity:.6;
+      cursor:not-allowed;
+    }
+    .note{
+      font-size:0.85rem;
+      color:var(--note);
+      margin-top:6px;
+    }
+    .warning{
+      font-size:0.85rem;
+      color:var(--warning);
+      margin-top:6px;
+    }
+    .hidden{
+      display:none !important;
+    }
+
+    .unsupported{
+      text-align:center;
+      color:var(--warning);
+      font-size:0.95rem;
+      margin-top:12px;
+    }
+
+    /* Modal de confirmación */
+    .modal-backdrop{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.55);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:20;
+    }
+    .modal-backdrop.hidden{
+      display:none;
+    }
+
+    .modal{
+      background:#fff;
+      border-radius:16px;
+      padding:18px 16px;
+      width:92%;
+      max-width:420px;
+      box-shadow:0 10px 30px rgba(0,0,0,.25);
+    }
+    .modal h3{
+      margin:0 0 8px;
+      text-align:center;
+      color:#4A90E2;
+    }
+    .modal p{
+      margin:4px 0;
+      color:#333;
+      font-size:15px;
+    }
+    .modal hr{
+      margin:10px 0;
+      border:none;
+      border-top:1px solid #ddd;
+    }
+    .modal-btns{
+      display:flex;
+      gap:10px;
+      margin-top:10px;
+    }
+    .btn-cancel{
+      flex:1;
+      padding:10px;
+      border-radius:10px;
+      border:1px solid #ccc;
+      background:#eee;
+      cursor:pointer;
+    }
+    .btn-ok{
+      flex:1;
+      padding:10px;
+      border-radius:10px;
+      border:0;
+      background:#4A90E2;
+      color:white;
+      cursor:pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="mainContainer">
+    <h2>Conversión entre plataformas</h2>
+
+    <div id="platformsError" class="warning hidden">
+      No hay suficientes plataformas habilitadas para realizar una conversión.
+      Solicite al cajero que revise la configuración.
+    </div>
+
+    <label for="plataformaOrigen">Plataforma origen</label>
+    <select id="plataformaOrigen">
+      <option value="">Seleccione plataforma origen</option>
+    </select>
+
+    <label for="usuarioOrigen">Usuario en plataforma origen</label>
+    <input id="usuarioOrigen" type="text" placeholder="Usuario origen" maxlength="32" readonly />
+    <div id="origenUserWarning" class="warning hidden">
+      El usuario de esta plataforma no está configurado. Comuníquese con el cajero para registrarlo antes de hacer una conversión.
+    </div>
+
+    <label for="plataformaDestino">Plataforma destino</label>
+    <select id="plataformaDestino">
+      <option value="">Seleccione plataforma destino</option>
+    </select>
+
+    <label for="usuarioDestino">Usuario en plataforma destino</label>
+    <input id="usuarioDestino" type="text" placeholder="Usuario destino" maxlength="32" readonly />
+    <div id="destinoUserWarning" class="warning hidden">
+      El usuario de esta plataforma no está configurado. Comuníquese con el cajero para registrarlo antes de hacer una conversión.
+    </div>
+
+    <label for="monto">Monto a convertir</label>
+    <input id="monto" type="text" inputmode="numeric" placeholder="0" />
+    <div class="note">
+      El monto corresponde a la cantidad que se moverá desde la plataforma origen a la plataforma destino.
+    </div>
+
+    <button id="btnEnviar" class="btn" disabled>Enviar conversión</button>
+
+    <div id="unsupportedMessage" class="unsupported hidden">
+      Esta MiniApp solo funciona dentro del <strong>Telegram oficial</strong> con soporte para WebApps.
+      Si la estás abriendo desde un navegador normal o desde otra app (por ejemplo, Telegram X),
+      por favor ábrela desde el Telegram oficial para continuar.
+    </div>
+  </div>
+
+  <!-- Modal de confirmación -->
+  <div id="confirmBackdrop" class="modal-backdrop hidden">
+    <div class="modal">
+      <h3>Confirmar Conversión</h3>
+
+      <p><b>Origen:</b> <span id="confOrigen"></span></p>
+      <p><b>Usuario Origen:</b> <span id="confUserOrigen"></span></p>
+
+      <p><b>Destino:</b> <span id="confDestino"></span></p>
+      <p><b>Usuario Destino:</b> <span id="confUserDestino"></span></p>
+
+      <hr>
+      <p><b>Monto:</b> <span id="confMonto"></span> Bs</p>
+
+      <div class="modal-btns">
+        <button class="btn-cancel" id="btnCancelConfirm">Cancelar</button>
+        <button class="btn-ok" id="btnOkConfirm">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    // 1) Normaliza IDs para que Imperial funcione sin importar cómo llegue
+    function normalizePlatformId(raw) {
+      const s = (raw || '').trim().toLowerCase();
+      if (!s) return '';
+    
+      // ✅ PPP como plataformas distintas (NO colapsar)
+      // Mantener exactamente ppp_bol y ppp_sol
+      if (s === 'ppp_bol' || s === 'ppp_sol') return s;
+    
+      // Imperial (mismas reglas que Apueston): aceptar varias formas comunes
+      if (
+        s === 'imperial' || s === 'imp' || s.startsWith('imperial_') ||
+        s === 'impnormal' || s === 'imppromo' || s.startsWith('imp_')
+      ) return 'imperial';
+    
+      // Apueston (por si llegan variantes)
+      if (
+        s === 'apueston' || s === 'apu' || s.startsWith('apueston_') ||
+        s === 'apunormal' || s === 'apupromo' || s.startsWith('apu_')
+      ) return 'apueston';
+    
+      // Meta / Metabet (por si llegan variantes)
+      if (s === 'metabet' || s === 'meta' || s.startsWith('meta_')) return 'metabet';
+    
+      // PPP genérico (solo si llega "ppp" o "pppoker")
+      if (s === 'ppp' || s === 'pppoker') return 'ppp';
+    
+      // Default: dejar como está
+      return s;
+  }
+
+
+    // Para construir llaves de usuario, usamos una clave canónica por plataforma
+    function canonicalKey(platformId) {
+      const id = normalizePlatformId(platformId);
+      if (id === 'apueston') return 'apu';      // compat con usr_apu*
+      if (id === 'imperial') return 'imp';      // compat con usr_imp*
+      if (id === 'metabet') return 'meta';      // compat con usr_meta*
+    
+      // ✅ cualquier PPP* comparte el mismo canon para usuario
+      if (id === 'ppp' || id === 'ppp_bol' || id === 'ppp_sol') return 'ppp';
+    
+      return id;
+    }
+
+
+    // Busca un valor en los query layers por varias llaves posibles (primer match gana)
+    function pickFirst(layers, keys) {
+      for (const key of keys) {
+        for (const qs of layers) {
+          const v = qs.get(key);
+          if (v !== null && String(v).trim() !== '') return String(v).trim();
+        }
+      }
+      // Si existe la llave pero vacío, respetamos vacío (para warnings)
+      for (const key of keys) {
+        for (const qs of layers) {
+          const v = qs.get(key);
+          if (v !== null) return String(v || '').trim();
+        }
+      }
+      return '';
+    }
+
+    function getParams() {
+      const layers = [];
+      try { layers.push(new URLSearchParams(location.search)); } catch {}
+      try {
+        const h = location.hash?.startsWith('#') ? location.hash.slice(1) : '';
+        layers.push(new URLSearchParams(h));
+      } catch {}
+      try {
+        const sp = window.Telegram?.WebApp?.initDataUnsafe?.start_param || '';
+        layers.push(new URLSearchParams(sp));
+      } catch {}
+
+      const g = (key) => {
+        for (const qs of layers) {
+          const v = qs.get(key);
+          if (v !== null) return v;
+        }
+        return null;
+      };
+
+      const platformsRaw = g('platforms') ?? g('plataformas') ?? '';
+      const platformIds = platformsRaw
+        .split(',')
+        .map(p => normalizePlatformId(p))
+        .filter(p => p.length > 0);
+
+      // quitar duplicados por normalización (ej: "imp,imperial")
+      const uniquePlatformIds = Array.from(new Set(platformIds));
+
+      const users = {};
+      for (const pid of uniquePlatformIds) {
+        const canon = canonicalKey(pid);
+
+        // Aceptamos varias llaves:
+        // - usr_<idNormalizado>
+        // - user_<idNormalizado>
+        // - usr_<canon> / user_<canon> (ej: usr_imp, usr_apu)
+        // - usr_<canon>Normal / usr_<canon>Promo (si tu backend lo manda así)
+        // - usr_<id>_normal / usr_<id>_promo (alternativas)
+        const keys = [
+          // 1) llave exacta de la plataforma (ej: usr_ppp_bol / usr_ppp_sol)
+          `usr_${pid}`, `user_${pid}`,
+        
+          // 2) llave canónica (ej: usr_ppp, usr_apu, usr_imp, usr_meta)
+          `usr_${canon}`, `user_${canon}`,
+        
+          // 3) fallback extra SOLO para PPP: si no vino usr_ppp_bol/sol, usar usr_ppp
+          ...(pid === 'ppp_bol' || pid === 'ppp_sol'
+            ? [`usr_ppp`, `user_ppp`]
+            : []),
+        
+          // 4) variantes legacy
+          `usr_${canon}Normal`, `user_${canon}Normal`,
+          `usr_${canon}Promo`,  `user_${canon}Promo`,
+        
+          `usr_${pid}_normal`, `user_${pid}_normal`,
+          `usr_${pid}_promo`,  `user_${pid}_promo`,
+        
+          `usr_${canon}_normal`, `user_${canon}_normal`,
+          `usr_${canon}_promo`,  `user_${canon}_promo`,
+        ];
+
+
+        users[pid] = pickFirst(layers, keys);
+      }
+
+      return { platformIds: uniquePlatformIds, users };
+    }
+
+    const state = {
+      platformIds: [],
+      users: {},
+      telegramSupported: false
+    };
+
+    function prettyPlatformName(id) {
+      const nid = normalizePlatformId(id);
+      if (!nid) return '';
+    
+      if (nid === 'apueston') return 'Apueston';
+      if (nid === 'imperial') return 'Imperial';
+      if (nid === 'metabet') return 'Metabet';
+    
+      // ✅ PPP diferenciado
+      if (nid === 'ppp_bol') return 'PPP (BOL)';
+      if (nid === 'ppp_sol') return 'PPP (SOL)';
+      if (nid === 'ppp') return 'PPP';
+    
+      return nid
+        .replace(/_/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function initPlatformsSelects() {
+      const origen = $('plataformaOrigen');
+      origen.innerHTML = '<option value="">Seleccione plataforma origen</option>';
+
+      for (const id of state.platformIds) {
+        const label = prettyPlatformName(id);
+        const opt1 = document.createElement('option');
+        opt1.value = id;
+        opt1.textContent = label;
+        origen.appendChild(opt1);
+      }
+
+      updateDestinoOptions('');
+
+      const error = $('platformsError');
+      if (state.platformIds.length < 2) {
+        error.classList.remove('hidden');
+        $('btnEnviar').disabled = true;
+      } else {
+        error.classList.add('hidden');
+      }
+    }
+
+    function updateDestinoOptions(origenId) {
+      const destino = $('plataformaDestino');
+      const current = destino.value;
+
+      destino.innerHTML = '<option value="">Seleccione plataforma destino</option>';
+
+      for (const id of state.platformIds) {
+        if (id === origenId) continue; // no mostrar misma plataforma que origen
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = prettyPlatformName(id);
+        destino.appendChild(opt);
+      }
+
+      if (current && current !== origenId && state.platformIds.includes(current)) {
+        for (const option of destino.options) {
+          if (option.value === current) {
+            destino.value = current;
+            break;
+          }
+        }
+      } else {
+        destino.value = "";
+      }
+    }
+
+    function onChangeDestino() {
+      const destinoId = $('plataformaDestino').value;
+      const userField = $('usuarioDestino');
+      const warning = $('destinoUserWarning');
+
+      const preUser = (state.users[destinoId] || '').trim();
+      userField.value = preUser;
+
+      if (!destinoId) {
+        warning.classList.add('hidden');
+      } else if (!preUser) {
+        warning.classList.remove('hidden');
+      } else {
+        warning.classList.add('hidden');
+      }
+
+      validate();
+    }
+
+    function onChangeOrigen() {
+      const origenId = $('plataformaOrigen').value;
+      const userField = $('usuarioOrigen');
+      const warning = $('origenUserWarning');
+
+      updateDestinoOptions(origenId);
+
+      const preUser = (state.users[origenId] || '').trim();
+      userField.value = preUser;
+
+      if (!origenId) {
+        warning.classList.add('hidden');
+      } else if (!preUser) {
+        warning.classList.remove('hidden');
+      } else {
+        warning.classList.add('hidden');
+      }
+
+      // refrescar estado/aviso del destino luego de recalcular opciones
+      onChangeDestino();
+
+      validate();
+    }
+
+    function sanitizeMontoInput(inputEl) {
+      inputEl.value = inputEl.value.replace(/\D/g, '');
+    }
+
+    function validate() {
+      const origenId = $('plataformaOrigen').value;
+      const destinoId = $('plataformaDestino').value;
+
+      const usuarioOrigen = $('usuarioOrigen').value.trim();
+      const usuarioDestino = $('usuarioDestino').value.trim();
+
+      const montoStr = $('monto').value.trim();
+      const monto = parseInt(montoStr || '0', 10);
+
+      let ok = true;
+
+      if (!origenId || !destinoId) ok = false;
+      if (origenId && destinoId && origenId === destinoId) ok = false;
+
+      if (!Number.isFinite(monto) || monto <= 0) ok = false;
+
+      // Bloquear si no está registrado en cualquiera de las dos plataformas
+      if (!usuarioOrigen) ok = false;
+      if (!usuarioDestino) ok = false;
+
+      $('btnEnviar').disabled = !ok;
+      return ok;
+    }
+
+    function showNotSupportedMessage() {
+      const msg = $('unsupportedMessage');
+      msg.classList.remove('hidden');
+    }
+
+    function buildPayload() {
+      return {
+        tipo: "conversion",
+        plataforma_origen: $('plataformaOrigen').value,
+        plataforma_destino: $('plataformaDestino').value,
+        usuario_origen: $('usuarioOrigen').value.trim(),
+        usuario_destino: $('usuarioDestino').value.trim(),
+        monto: parseInt($('monto').value.trim() || '0', 10),
+        timestamp: Date.now()
+      };
+    }
+
+    function sendToTelegram() {
+      if (!validate()) return;
+
+      const payload = buildPayload();
+      const json = JSON.stringify(payload);
+
+      if (window.Telegram?.WebApp) {
+        const tg = Telegram.WebApp;
+        try {
+          tg.HapticFeedback?.impactOccurred?.('medium');
+          tg.sendData(json);
+          setTimeout(() => tg.close(), 150);
+        } catch (e) {
+          showNotSupportedMessage();
+        }
+      } else {
+        showNotSupportedMessage();
+      }
+    }
+
+    function openConfirm(){
+      $('confOrigen').textContent = prettyPlatformName($('plataformaOrigen').value);
+      $('confDestino').textContent = prettyPlatformName($('plataformaDestino').value);
+      $('confUserOrigen').textContent = $('usuarioOrigen').value.trim() || '—';
+      $('confUserDestino').textContent = $('usuarioDestino').value.trim() || '—';
+      $('confMonto').textContent = $('monto').value.trim();
+
+      $('confirmBackdrop').classList.remove('hidden');
+    }
+
+    function closeConfirm(){
+      $('confirmBackdrop').classList.add('hidden');
+    }
+
+    (function init() {
+      const { platformIds, users } = getParams();
+      state.platformIds = platformIds;
+      state.users = users;
+
+      initPlatformsSelects();
+
+      state.telegramSupported = !!(window.Telegram && Telegram.WebApp);
+
+      if (state.telegramSupported) {
+        try {
+          Telegram.WebApp.ready();
+        } catch (e) {}
+      } else {
+        showNotSupportedMessage();
+      }
+
+      $('plataformaOrigen').addEventListener('change', onChangeOrigen);
+      $('plataformaDestino').addEventListener('change', onChangeDestino);
+
+      $('monto').addEventListener('input', (e) => { sanitizeMontoInput(e.target); validate(); });
+
+      $('btnEnviar').addEventListener('click', () => {
+        if (validate()) openConfirm();
+      });
+
+      $('btnCancelConfirm').addEventListener('click', () => {
+        closeConfirm();
+      });
+
+      $('btnOkConfirm').addEventListener('click', () => {
+        closeConfirm();
+        sendToTelegram();
+      });
+
+      validate();
+    })();
+  </script>
+</body>
+</html>

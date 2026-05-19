@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ganancias</title>
+
+<style>
+  :root{
+    /* Sobrio / corporativo */
+    --bg:#0c0f14;
+    --card:#141821;
+    --panel:#10141c;
+    --ink:#e5e7eb;
+    --muted:#9aa3b2;
+    --line:#232836;
+
+    /* Acento único, discreto */
+    --accent:#6b7280;
+
+    /* Estados (usar con moderación) */
+    --ok:#22c55e;
+    --bad:#ef4444;
+    --warn:#f59e0b;
+  }
+
+  html,body{
+    margin:0;height:100%;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial;
+  }
+  .wrap{max-width:880px;margin:auto;padding:20px}
+
+  .header{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:18px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+  }
+  .avatar{
+    width:44px;height:44px;border-radius:10px;
+    background:#1f2432;
+    display:grid;place-items:center;
+    font-weight:600;color:#d1d5db;
+  }
+  .h-title{margin:0;font-size:17px;letter-spacing:.2px}
+  .h-sub{margin:4px 0 0;font-size:13px;color:var(--muted)}
+  .pill{
+    font-size:12px;color:var(--muted);
+    border:1px solid var(--line);
+    padding:6px 10px;border-radius:999px;
+    background:transparent;
+    white-space:nowrap;
+  }
+
+  /* Tabs sobrias */
+  .tabs{margin-top:10px;display:flex;gap:14px}
+  .tab{
+    font-size:13px;
+    color:var(--muted);
+    cursor:pointer;
+    padding-bottom:4px;
+    border-bottom:2px solid transparent;
+    user-select:none;
+  }
+  .tab.active{
+    color:var(--ink);
+    border-color:var(--accent);
+  }
+
+  .cards{display:grid;gap:16px;margin-top:16px}
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    overflow:hidden;
+  }
+  .card h3{
+    margin:0;
+    padding:14px 16px;
+    font-size:14px;
+    border-bottom:1px solid var(--line);
+    color:#d1d5db;
+  }
+  .pad{padding:14px 16px}
+
+  .kpis{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:12px;
+  }
+  @media(min-width:760px){.kpis{grid-template-columns:repeat(4,1fr)}}
+
+  .kpi{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px;
+  }
+  .kpi .label{font-size:12px;color:var(--muted)}
+  .kpi .val{font-size:17px;font-weight:600;margin-top:4px;letter-spacing:.2px}
+
+  .kpi.pos .val{color:var(--ok)}
+  .kpi.neg .val{color:var(--bad)}
+  .kpi.warn .val{color:var(--warn)}
+
+  /* Pago neto destacado, pero sobrio */
+  .kpi.neto{
+    border-color:#2d3446;
+    background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+  }
+  .kpi.neto .val{font-size:19px;font-weight:750}
+
+  /* Tabla compacta opcional (no la usamos ahora, pero la dejo por si luego agregas algo) */
+  table{width:100%;border-collapse:separate;border-spacing:0 10px}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+
+  <section class="header">
+    <div class="avatar" id="avatarTxt">CL</div>
+
+    <div>
+      <h1 class="h-title">Ganancias</h1>
+      <p class="h-sub"><span id="personaName">—</span> · <span id="rangoFechas">—</span></p>
+
+      <div class="tabs" role="tablist" aria-label="Período">
+        <div class="tab active" id="tab-curr" role="tab" aria-selected="true">Periodo actual</div>
+        <div class="tab" id="tab-prev" role="tab" aria-selected="false">Mes anterior</div>
+      </div>
+    </div>
+
+    <div style="margin-left:auto">
+      <span class="pill" id="rangoTxt">Rango: —</span>
+    </div>
+  </section>
+
+  <section class="cards">
+
+    <article class="card">
+      <h3>Resumen</h3>
+      <div class="pad">
+        <div class="kpis">
+          <div class="kpi">
+            <div class="label">Cargas</div>
+            <div class="val" id="kpiCargas">—</div>
+          </div>
+
+          <div class="kpi">
+            <div class="label">Retiros</div>
+            <div class="val" id="kpiRetiros">—</div>
+          </div>
+
+          <div class="kpi" id="kpiBalanceBox">
+            <div class="label">Balance</div>
+            <div class="val" id="kpiBalance">—</div>
+          </div>
+
+          <div class="kpi">
+            <div class="label">Comisión</div>
+            <div class="val" id="kpiComi">—</div>
+          </div>
+
+          <div class="kpi" id="kpiProrrBox">
+            <div class="label">Prorrateo negativo</div>
+            <div class="val" id="kpiProrr">—</div>
+          </div>
+
+          <div class="kpi warn" id="kpiDescBox">
+            <div class="label">Descuento</div>
+            <div class="val" id="kpiDesc">—</div>
+          </div>
+
+          <div class="kpi neto" id="kpiNetoBox" style="grid-column: span 2;">
+            <div class="label">Pago neto</div>
+            <div class="val" id="kpiNeto">—</div>
+          </div>
+
+          <div class="kpi" style="display:none"></div>
+        </div>
+      </div>
+    </article>
+
+  </section>
+</div>
+
+<script>
+(function(){
+  const qs = new URLSearchParams(location.search);
+
+  // Normaliza números: 1.234,56 / 1,234.56 / 1234,56 / 1234.56
+  const getN = k => {
+    const v = qs.get(k);
+    if (!v) return 0;
+    const s = String(v).trim();
+    const hasComma = s.includes(',');
+    const hasDot = s.includes('.');
+    let cleaned = s;
+
+    if (hasComma && hasDot) {
+      const lastComma = s.lastIndexOf(',');
+      const lastDot = s.lastIndexOf('.');
+      if (lastComma > lastDot) cleaned = s.replace(/\./g, '').replace(',', '.');
+      else cleaned = s.replace(/,/g, '');
+    } else if (hasComma) {
+      cleaned = s.replace(/\./g, '').replace(',', '.');
+    } else {
+      cleaned = s.replace(/,/g, '');
+    }
+
+    const n = Number(cleaned);
+    return isNaN(n) ? 0 : n;
+  };
+
+  const getS = (k,f="—") => {
+    const v = qs.get(k);
+    return (!v) ? f : decodeURIComponent(v);
+  };
+
+  const fmt = new Intl.NumberFormat('es-BO',{minimumFractionDigits:2, maximumFractionDigits:2});
+
+  // dd/MM/yyyy fijo
+  const fmtFecha = (txt)=>{
+    if(!txt || txt==="—") return "—";
+    const d = new Date(txt);
+    if(!isNaN(d.getTime())){
+      const dd = String(d.getDate()).padStart(2,"0");
+      const mm = String(d.getMonth()+1).padStart(2,"0");
+      const yy = d.getFullYear();
+      return `${dd}/${mm}/${yy}`;
+    }
+    const m = txt.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
+    if(m) return `${m[1]}/${m[2]}/${m[3]}`;
+    return txt;
+  };
+
+  // Datos período actual
+  const dataCurr = {
+    persona: getS('persona'),
+    fechaIni: fmtFecha(getS('fechaInicio')),
+    fechaFin: fmtFecha(getS('fechaFin')),
+    cargas: getN('cargas'),
+    retiros: getN('retiros'),
+    rangoNombre: getS('rangoNombre'),
+    rangoComision: getN('rangoComision'),
+    pagoSinDescuento: getN('pagoSinDescuento'),
+    prorrateoNegativo: getN('prorrateoNegativo'),
+    descuento: getN('descuento'),
+    subTotal: getN('subTotal')
+  };
+  dataCurr.balance = Number((dataCurr.cargas - dataCurr.retiros).toFixed(2));
+
+  // Datos mes anterior
+  const dataPrev = {
+    persona: getS('persona') || '—',
+    fechaIni: fmtFecha(getS('fechaInicioPrev')),
+    fechaFin: fmtFecha(getS('fechaFinPrev')),
+    cargas: getN('cargasPrev'),
+    retiros: getN('retirosPrev'),
+    rangoNombre: getS('rangoNombre'),
+    rangoComision: getN('rangoComision'),
+    pagoSinDescuento: getN('pagoSinDescuentoPrev'),
+    prorrateoNegativo: getN('prorrateoNegativoPrev'),
+    descuento: getN('descuentoPrev'),
+    subTotal: getN('subTotalPrev')
+  };
+  dataPrev.balance = Number((dataPrev.cargas - dataPrev.retiros).toFixed(2));
+
+  // UI refs
+  const avatarTxt = document.getElementById('avatarTxt');
+  const personaName = document.getElementById('personaName');
+  const rangoFechas = document.getElementById('rangoFechas');
+  const rangoTxt = document.getElementById('rangoTxt');
+
+  const kpiCargas = document.getElementById('kpiCargas');
+  const kpiRetiros = document.getElementById('kpiRetiros');
+  const kpiBalance = document.getElementById('kpiBalance');
+  const kpiBalanceBox = document.getElementById('kpiBalanceBox');
+  const kpiComi = document.getElementById('kpiComi');
+
+  const kpiProrr = document.getElementById('kpiProrr');
+  const kpiProrrBox = document.getElementById('kpiProrrBox');
+  const kpiDesc = document.getElementById('kpiDesc');
+  const kpiDescBox = document.getElementById('kpiDescBox');
+  const kpiNeto = document.getElementById('kpiNeto');
+  const kpiNetoBox = document.getElementById('kpiNetoBox');
+
+  const tabCurr = document.getElementById('tab-curr');
+  const tabPrev = document.getElementById('tab-prev');
+
+  const setTabState = (which)=>{
+    tabCurr.classList.toggle('active', which==='curr');
+    tabPrev.classList.toggle('active', which==='prev');
+    tabCurr.setAttribute('aria-selected', which==='curr' ? 'true':'false');
+    tabPrev.setAttribute('aria-selected', which==='prev' ? 'true':'false');
+  };
+
+  function resetUI(){
+    kpiBalanceBox.classList.remove('pos','neg');
+    kpiProrrBox.classList.remove('pos','neg','warn');
+    kpiDescBox.classList.remove('pos','neg','warn');
+    kpiNetoBox.classList.remove('pos','neg');
+
+    kpiCargas.textContent = '—';
+    kpiRetiros.textContent = '—';
+    kpiBalance.textContent = '—';
+    kpiComi.textContent = '—';
+    kpiProrr.textContent = '—';
+    kpiDesc.textContent = '—';
+    kpiNeto.textContent = '—';
+  }
+
+  const render = (data)=>{
+    resetUI();
+
+    // Header
+    const iniciales = data.persona && data.persona!=='—'
+      ? data.persona.split(/\s+/).slice(0,2).map(s=>s[0]?.toUpperCase()||'').join('')
+      : 'CL';
+    avatarTxt.textContent = iniciales;
+    personaName.textContent = data.persona || '—';
+    rangoFechas.textContent = `${data.fechaIni || '—'} – ${data.fechaFin || '—'}`;
+    rangoTxt.textContent = `Rango: ${data.rangoNombre || '—'} (${fmt.format(data.rangoComision||0)}%)`;
+
+    // KPIs (solo del periodo seleccionado; sin comparación)
+    kpiCargas.textContent = `Bs ${fmt.format(data.cargas||0)}`;
+    kpiRetiros.textContent = `Bs ${fmt.format(data.retiros||0)}`;
+
+    kpiBalance.textContent = `Bs ${fmt.format(data.balance||0)}`;
+    kpiBalanceBox.classList.add((data.balance||0) >= 0 ? 'pos' : 'neg');
+
+    kpiComi.textContent = `${fmt.format(data.rangoComision||0)}%`;
+
+    // Prorrateo negativo (normalmente negativo)
+    kpiProrr.textContent = `Bs ${fmt.format(data.prorrateoNegativo||0)}`;
+    if ((data.prorrateoNegativo||0) < 0) kpiProrrBox.classList.add('neg');
+    else kpiProrrBox.classList.add('warn');
+
+    // Descuento (se muestra como negativo fijo)
+    const descVal = -Math.abs(data.descuento||0);
+    kpiDesc.textContent = `Bs ${fmt.format(descVal)}`;
+    kpiDescBox.classList.add('warn');
+
+    // Pago neto (subtotal)
+    kpiNeto.textContent = `Bs ${fmt.format(data.subTotal||0)}`;
+    kpiNetoBox.classList.add((data.subTotal||0) >= 0 ? 'pos' : 'neg');
+  };
+
+  // Vista inicial (?view=prev)
+  const initialView = (getS('view','curr').toLowerCase()==='prev') ? 'prev' : 'curr';
+  setTabState(initialView);
+  render(initialView==='curr' ? dataCurr : dataPrev);
+
+  // Tabs
+  tabCurr.addEventListener('click', ()=>{
+    setTabState('curr');
+    render(dataCurr);
+    history.replaceState(null,'',updateQuery('view','curr'));
+  });
+
+  tabPrev.addEventListener('click', ()=>{
+    setTabState('prev');
+    render(dataPrev);
+    history.replaceState(null,'',updateQuery('view','prev'));
+  });
+
+  function updateQuery(key, val){
+    const url = new URL(location.href);
+    url.searchParams.set(key, val);
+    return url.toString();
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Retiro</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    :root {
+      --primary-color: #4A90E2;
+      --background-color: #f5f8fb;
+      --card-color: #ffffff;
+      --text-color: #333;
+      --border-color: #dfe6ee;
+      --btn-hover: #3b7dc4;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: var(--background-color);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      background: var(--card-color);
+      padding: 30px 25px;
+      border-radius: 16px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+      width: 100%;
+      max-width: 400px;
+      box-sizing: border-box;
+      z-index: 1;
+    }
+
+    h2 {
+      text-align: center;
+      color: var(--primary-color);
+      margin-bottom: 25px;
+    }
+
+    .input-group {
+      margin-bottom: 18px;
+    }
+
+    label {
+      font-weight: 600;
+      margin-bottom: 6px;
+      display: block;
+      color: var(--text-color);
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 15px;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      background-color: #fdfdfd;
+      box-sizing: border-box;
+    }
+
+    button {
+      width: 100%;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: var(--btn-hover);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(3px);
+      z-index: 10;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal {
+      background-color: #fff;
+      padding: 25px 20px;
+      border-radius: 14px;
+      max-width: 360px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .modal h3 {
+      margin-top: 0;
+      color: var(--primary-color);
+    }
+
+    .modal p {
+      white-space: pre-line;
+      margin: 15px 0;
+      color: #333;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+    }
+
+    .button-group button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .button-group button:first-child {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    .button-group button:last-child {
+      background-color: #e0e6ed;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>Retiro</h2>
+
+    <div class="input-group">
+      <label for="userId">ID de Usuario</label>
+      <input type="text" id="userId" placeholder="Ej. usuario123">
+    </div>
+
+    <div class="input-group">
+      <label for="platform">Plataforma</label>
+      <select id="platform"></select>
+    </div>
+
+    <div class="input-group">
+      <label for="amount">Monto en Bs</label>
+      <input type="number" id="amount" placeholder="Ej. 100.00" min="0" step="0.01">
+    </div>
+
+    <button id="retirarBtn">Retirar</button>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <h3>Confirmar</h3>
+      <p id="summaryText"></p>
+      <div class="button-group">
+        <button id="confirmYes">Sí</button>
+        <button id="confirmNo">No</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+
+    const TIPO_RETIRO = "retiro"; // ✔ tipo fijo
+
+    const PLATFORM_LABELS = {
+      apueston: 'Apueston',
+      metabet: 'Metabet',
+      pppsol: 'PPPoker SOL',
+      pppbol: 'PPPoker BOL'
+    };
+
+    const retirarBtn = document.getElementById('retirarBtn');
+    const modalOverlay = document.getElementById('modalOverlay');
+    const summaryText = document.getElementById('summaryText');
+    const confirmYes = document.getElementById('confirmYes');
+    const confirmNo = document.getElementById('confirmNo');
+    const platformSelect = document.getElementById('platform');
+
+    function initPlatforms() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const plataformasParam = urlParams.get('plataformas');
+
+      let plataformas = [];
+
+      if (plataformasParam && plataformasParam.trim() !== '') {
+        plataformas = plataformasParam
+          .split(',')
+          .map(p => p.trim().toLowerCase())
+          .filter(p => p.length > 0);
+      }
+
+      if (plataformas.length === 0) {
+        plataformas = ['apueston', 'metabet', 'pppsol', 'pppbol'];
+      }
+
+      platformSelect.innerHTML = '';
+
+      if (plataformas.length > 1) {
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        defaultOpt.textContent = 'Seleccione una plataforma';
+        platformSelect.appendChild(defaultOpt);
+      }
+
+      plataformas.forEach(code => {
+        const opt = document.createElement('option');
+        opt.value = code;
+        opt.textContent = PLATFORM_LABELS[code] || code;
+        platformSelect.appendChild(opt);
+      });
+
+      if (plataformas.length === 1) {
+        platformSelect.value = plataformas[0];
+        platformSelect.disabled = true;
+      } else {
+        platformSelect.disabled = false;
+      }
+    }
+
+    initPlatforms();
+
+    retirarBtn.addEventListener('click', () => {
+      const userId = document.getElementById('userId').value.trim();
+      const platform = platformSelect.value;
+      const amountStr = document.getElementById('amount').value.trim();
+      const amount = parseFloat(amountStr);
+
+      if (!userId || !platform || !amountStr || isNaN(amount)) {
+        alert('Por favor complete todos los campos correctamente.');
+        return;
+      }
+
+      const platformLabel = PLATFORM_LABELS[platform] || platform;
+
+      summaryText.textContent =
+        `Usuario: ${userId}\n` +
+        `Plataforma: ${platformLabel}\n` +
+        `Monto: Bs ${amount.toFixed(2)}`;
+
+      modalOverlay.style.display = 'flex';
+    });
+
+    confirmYes.addEventListener('click', () => {
+      const data = {
+        tipo: TIPO_RETIRO,   // ✔ AHORA SÍ SE ENVÍA
+        usuario: document.getElementById('userId').value.trim(),
+        plataforma: platformSelect.value,
+        monto: parseFloat(document.getElementById('amount').value.trim())
+      };
+
+      tg.sendData(JSON.stringify(data));
+    });
+
+    confirmNo.addEventListener('click', () => {
+      modalOverlay.style.display = 'none';
+    });
+  </script>
+
+</body>
+</html>
