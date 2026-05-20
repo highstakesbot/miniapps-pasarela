@@ -596,6 +596,7 @@
     <!-- <div class="section-text"> -->
       <!-- Elige cómo quieres pagar tu pedido. -->
     <!-- </div> -->
+     
 
     <div class="card">
       <div id="paymentOptions" class="payment-options"></div>
@@ -639,12 +640,17 @@
     </div>
 
     <div class="card">
-      <div class="field-label">Forma de pago</div>
       <div class="summary-row">
-        <span>Método:</span>
-        <span id="finalPaymentMethod">-</span>
-      </div>
-      <div class="helper-text" id="finalPaymentDetail" style="margin-top:6px;">
+  <span>Método:</span>
+  <strong id="finalPaymentMethod"></strong>
+</div>
+
+<div class="summary-row">
+  <span>Código promocional:</span>
+  <strong id="finalPromoCodigo">-</strong>
+</div>
+
+<div id="finalPaymentDetail" class="muted"></div>      <div class="helper-text" id="finalPaymentDetail" style="margin-top:6px;">
       </div>
     </div>
 
@@ -741,7 +747,7 @@
     const finalLocation = document.getElementById("finalLocation");
     const finalPaymentMethod = document.getElementById("finalPaymentMethod");
     const finalPaymentDetail = document.getElementById("finalPaymentDetail");
-
+    const finalPromoCodigo = document.getElementById("finalPromoCodigo");
     const paymentOptionsContainer = document.getElementById("paymentOptions");
 
     // Modal
@@ -783,26 +789,34 @@
     };
 
     function getPaymentLabel(value) {
-      if (value === "transferencia") return "Pago por QR";
-      for (const key in creditDefinitions) {
-        if (creditDefinitions[key].value === value) {
-          return creditDefinitions[key].main;
-        }
-      }
-      return value || "-";
+  if (value === "transferencia") return "Pago por QR";
+  if (value === "efectivo") return "Pago en efectivo";
+// --------- agregado pago por efectivo ---------
+  for (const key in creditDefinitions) { 
+    if (creditDefinitions[key].value === value) {
+      return creditDefinitions[key].main;
     }
+  }
+  return value || "-";
+}
 
-    function getPaymentDetail(value) {
-      if (value === "transferencia") {
-        return "Pagarás mediante Pago por QR. El vendedor te enviará el QR.";
-      }
-      for (const key in creditDefinitions) {
-        if (creditDefinitions[key].value === value) {
-          return creditDefinitions[key].sub;
-        }
-      }
-      return "";
+   function getPaymentDetail(value) {
+  if (value === "transferencia") {
+    return "Pagarás mediante Pago por QR. El vendedor te enviará el QR.";
+  }
+//--------AGREGADO PARA PAGO EN EFECTIVO---------
+  if (value === "efectivo") {
+    return "Pagarás en efectivo al momento de la entrega.";
+  }
+
+  for (const key in creditDefinitions) {
+    if (creditDefinitions[key].value === value) {
+      return creditDefinitions[key].sub;
     }
+  }
+  return "";
+}
+
 
     // --------- MAPA: init y manejo de marcador draggable ---------
 
@@ -1057,6 +1071,14 @@
         sub: "Te enviaremos un QR para el deposito."
       });
 
+      createPaymentItem({
+       value: "efectivo",
+        main: "Pago en efectivo",
+         sub: "Pagarás en efectivo al momento de la entrega."
+          });
+//--------------CODIGO PROMOCION PARA IMPLEMENTAR--------------
+          createCodigoPromocion();
+
       // Créditos adicionales según parámetro
       extraMethods.forEach(def => createPaymentItem(def));
 
@@ -1067,6 +1089,36 @@
         }
       });
     }
+    // CODIGO DE PROMOCION  VISUALMENTE 
+    function createCodigoPromocion() {
+  const container = document.getElementById("paymentOptions");
+
+  const div = document.createElement("div");
+  div.id = "codigoPromocion";
+  div.style.marginTop = "10px";
+  div.style.padding = "12px";
+  div.style.border = "1px solid #d8dce3";
+  div.style.borderRadius = "12px";
+  div.style.background = "#ffffff";
+
+  div.innerHTML = `
+    <div style="font-weight:600; margin-bottom:8px;">Código de promoción</div>
+
+    <div style="display:flex; gap:8px; align-items:center;">
+      <select id="promoTipo"
+        style="width:90px; min-width:90px; padding:10px; border-radius:8px; border:1px solid #ccc;">
+        <option value="PP">PP</option>
+        <option value="C">C</option>
+        <option value="IM">IM</option>
+      </select>
+
+      <input id="promoCodigo" type="text" placeholder="Coloca tu codigo de promocion"
+        style="flex:1; min-width:0; padding:10px; border-radius:8px; border:1px solid #ccc;">
+    </div>
+  `;
+
+  container.appendChild(div);
+}
 
     function renderProducts() {
       productsContainer.innerHTML = "";
@@ -1377,8 +1429,13 @@
         finalLocation.textContent = "Sin ubicación precisa";
       }
 
-      finalPaymentMethod.textContent = getPaymentLabel(selectedPaymentMethod);
-      finalPaymentDetail.textContent = getPaymentDetail(selectedPaymentMethod);
+     const promoTipo = document.getElementById("promoTipo")?.value || "";
+const promoCodigo = document.getElementById("promoCodigo")?.value || "";
+const codigoPromocional = `${promoTipo} ${promoCodigo}`.trim();
+
+finalPaymentMethod.textContent = getPaymentLabel(selectedPaymentMethod);
+finalPromoCodigo.textContent = codigoPromocional || "-";
+finalPaymentDetail.textContent = getPaymentDetail(selectedPaymentMethod);
     }
 
     // Navegación manual por los botones de pasos
