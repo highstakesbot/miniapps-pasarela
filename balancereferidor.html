@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Ganancias</title>
+<title>Balance referidor</title>
 
 <style>
   :root{
@@ -115,6 +115,18 @@
   }
   .kpi.neto .val{font-size:19px;font-weight:750}
 
+  .formula{
+    margin-top:12px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px;
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.5;
+  }
+  .formula strong{color:var(--ink)}
+
   /* Tabla compacta opcional (no la usamos ahora, pero la dejo por si luego agregas algo) */
   table{width:100%;border-collapse:separate;border-spacing:0 10px}
 </style>
@@ -127,7 +139,7 @@
     <div class="avatar" id="avatarTxt">CL</div>
 
     <div>
-      <h1 class="h-title">Ganancias</h1>
+      <h1 class="h-title" id="mainTitle">Ganancias</h1>
       <p class="h-sub"><span id="personaName">—</span> · <span id="rangoFechas">—</span></p>
 
       <div class="tabs" role="tablist" aria-label="Período">
@@ -158,32 +170,33 @@
           </div>
 
           <div class="kpi" id="kpiBalanceBox">
-            <div class="label">Balance</div>
+            <div class="label" id="kpiBalanceLabel">Balance</div>
             <div class="val" id="kpiBalance">—</div>
           </div>
 
           <div class="kpi">
-            <div class="label">Comisión</div>
+            <div class="label" id="kpiComiLabel">Comisión</div>
             <div class="val" id="kpiComi">—</div>
           </div>
 
           <div class="kpi" id="kpiProrrBox">
-            <div class="label">Prorrateo negativo</div>
+            <div class="label" id="kpiProrrLabel">Prorrateo negativo</div>
             <div class="val" id="kpiProrr">—</div>
           </div>
 
           <div class="kpi warn" id="kpiDescBox">
-            <div class="label">Descuento</div>
+            <div class="label" id="kpiDescLabel">Descuento</div>
             <div class="val" id="kpiDesc">—</div>
           </div>
 
           <div class="kpi neto" id="kpiNetoBox" style="grid-column: span 2;">
-            <div class="label">Pago neto</div>
+            <div class="label" id="kpiNetoLabel">Pago neto</div>
             <div class="val" id="kpiNeto">—</div>
           </div>
 
           <div class="kpi" style="display:none"></div>
         </div>
+        <div class="formula" id="formulaBox" style="display:none"></div>
       </div>
     </article>
 
@@ -193,6 +206,7 @@
 <script>
 (function(){
   const qs = new URLSearchParams(location.search);
+  const isGananciaMensual = (qs.get('tipo') || '').toLowerCase() === 'ganancia-mensual';
 
   // Normaliza números: 1.234,56 / 1,234.56 / 1234,56 / 1234.56
   const getN = k => {
@@ -225,7 +239,6 @@
 
   const fmt = new Intl.NumberFormat('es-BO',{minimumFractionDigits:2, maximumFractionDigits:2});
 
-  // dd/MM/yyyy fijo
   const fmtFecha = (txt)=>{
     if(!txt || txt==="—") return "—";
     const d = new Date(txt);
@@ -240,39 +253,47 @@
     return txt;
   };
 
-  // Datos período actual
+  const pickDate = (primary, fallback) => fmtFecha(getS(primary, getS(fallback)));
+
   const dataCurr = {
     persona: getS('persona'),
-    fechaIni: fmtFecha(getS('fechaInicio')),
-    fechaFin: fmtFecha(getS('fechaFin')),
+    fechaIni: pickDate('desde', 'fechaInicio'),
+    fechaFin: pickDate('hasta', 'fechaFin'),
+    saldoAnterior: getN('saldoAnterior'),
     cargas: getN('cargas'),
     retiros: getN('retiros'),
+    saldoActual: getN('saldoActual'),
+    balance: getN('balance'),
     rangoNombre: getS('rangoNombre'),
-    rangoComision: getN('rangoComision'),
+    rangoComision: getN('rangoComision') || getN('porcentajeComision'),
+    pagoMes: getN('pagoMes'),
     pagoSinDescuento: getN('pagoSinDescuento'),
     prorrateoNegativo: getN('prorrateoNegativo'),
     descuento: getN('descuento'),
-    subTotal: getN('subTotal')
+    subTotal: getN('subTotal'),
+    pagoNeto: getN('pagoNeto')
   };
-  dataCurr.balance = Number((dataCurr.cargas - dataCurr.retiros).toFixed(2));
 
-  // Datos mes anterior
   const dataPrev = {
     persona: getS('persona') || '—',
-    fechaIni: fmtFecha(getS('fechaInicioPrev')),
-    fechaFin: fmtFecha(getS('fechaFinPrev')),
+    fechaIni: pickDate('desdePrev', 'fechaInicioPrev'),
+    fechaFin: pickDate('hastaPrev', 'fechaFinPrev'),
+    saldoAnterior: getN('saldoAnteriorPrev'),
     cargas: getN('cargasPrev'),
     retiros: getN('retirosPrev'),
-    rangoNombre: getS('rangoNombre'),
-    rangoComision: getN('rangoComision'),
+    saldoActual: getN('saldoActualPrev'),
+    balance: getN('balancePrev'),
+    rangoNombre: getS('rangoNombrePrev', getS('rangoNombre')),
+    rangoComision: getN('rangoComisionPrev') || getN('porcentajeComisionPrev') || getN('rangoComision') || getN('porcentajeComision'),
+    pagoMes: getN('pagoMesPrev'),
     pagoSinDescuento: getN('pagoSinDescuentoPrev'),
     prorrateoNegativo: getN('prorrateoNegativoPrev'),
     descuento: getN('descuentoPrev'),
-    subTotal: getN('subTotalPrev')
+    subTotal: getN('subTotalPrev'),
+    pagoNeto: getN('pagoNetoPrev')
   };
-  dataPrev.balance = Number((dataPrev.cargas - dataPrev.retiros).toFixed(2));
 
-  // UI refs
+  const mainTitle = document.getElementById('mainTitle');
   const avatarTxt = document.getElementById('avatarTxt');
   const personaName = document.getElementById('personaName');
   const rangoFechas = document.getElementById('rangoFechas');
@@ -283,16 +304,24 @@
   const kpiBalance = document.getElementById('kpiBalance');
   const kpiBalanceBox = document.getElementById('kpiBalanceBox');
   const kpiComi = document.getElementById('kpiComi');
+  const kpiComiLabel = document.getElementById('kpiComiLabel');
+  const kpiBalanceLabel = document.getElementById('kpiBalanceLabel');
 
   const kpiProrr = document.getElementById('kpiProrr');
   const kpiProrrBox = document.getElementById('kpiProrrBox');
+  const kpiProrrLabel = document.getElementById('kpiProrrLabel');
   const kpiDesc = document.getElementById('kpiDesc');
   const kpiDescBox = document.getElementById('kpiDescBox');
+  const kpiDescLabel = document.getElementById('kpiDescLabel');
   const kpiNeto = document.getElementById('kpiNeto');
   const kpiNetoBox = document.getElementById('kpiNetoBox');
+  const kpiNetoLabel = document.getElementById('kpiNetoLabel');
+  const formulaBox = document.getElementById('formulaBox');
 
   const tabCurr = document.getElementById('tab-curr');
   const tabPrev = document.getElementById('tab-prev');
+
+  mainTitle.textContent = isGananciaMensual ? 'Ganancias' : 'MI BALANCE';
 
   const setTabState = (which)=>{
     tabCurr.classList.toggle('active', which==='curr');
@@ -314,12 +343,11 @@
     kpiProrr.textContent = '—';
     kpiDesc.textContent = '—';
     kpiNeto.textContent = '—';
+    formulaBox.style.display = 'none';
+    formulaBox.innerHTML = '';
   }
 
-  const render = (data)=>{
-    resetUI();
-
-    // Header
+  function renderHeader(data){
     const iniciales = data.persona && data.persona!=='—'
       ? data.persona.split(/\s+/).slice(0,2).map(s=>s[0]?.toUpperCase()||'').join('')
       : 'CL';
@@ -327,8 +355,48 @@
     personaName.textContent = data.persona || '—';
     rangoFechas.textContent = `${data.fechaIni || '—'} – ${data.fechaFin || '—'}`;
     rangoTxt.textContent = `Rango: ${data.rangoNombre || '—'} (${fmt.format(data.rangoComision||0)}%)`;
+  }
 
-    // KPIs (solo del periodo seleccionado; sin comparación)
+  function renderBalance(data){
+    resetUI();
+    renderHeader(data);
+
+    kpiBalanceLabel.textContent = 'Resultado';
+    kpiComiLabel.textContent = 'Saldo anterior';
+    kpiProrrLabel.textContent = 'Saldo actual';
+    kpiDescLabel.textContent = 'Fórmula';
+    kpiNetoLabel.textContent = 'Resultado del periodo';
+
+    kpiCargas.textContent = `Bs ${fmt.format(data.cargas||0)}`;
+    kpiRetiros.textContent = `Bs ${fmt.format(data.retiros||0)}`;
+    kpiBalance.textContent = `Bs ${fmt.format(data.balance||0)}`;
+    kpiBalanceBox.classList.add((data.balance||0) >= 0 ? 'pos' : 'neg');
+
+    kpiComi.textContent = `Bs ${fmt.format(data.saldoAnterior||0)}`;
+    kpiProrr.textContent = `Bs ${fmt.format(data.saldoActual||0)}`;
+    kpiProrrBox.classList.add('warn');
+
+    const formula = `${fmt.format(data.saldoAnterior||0)} + ${fmt.format(data.cargas||0)} - ${fmt.format(data.retiros||0)} - ${fmt.format(data.saldoActual||0)} = ${fmt.format(data.balance||0)}`;
+    kpiDesc.textContent = formula;
+    kpiDescBox.classList.add('warn');
+
+    kpiNeto.textContent = `Bs ${fmt.format(data.balance||0)}`;
+    kpiNetoBox.classList.add((data.balance||0) >= 0 ? 'pos' : 'neg');
+
+    formulaBox.style.display = 'block';
+    formulaBox.innerHTML = `Fórmula: <strong>Saldo anterior + Cargas - Retiros - Saldo actual = Balance</strong><br>${formula}`;
+  }
+
+  function renderGanancia(data){
+    resetUI();
+    renderHeader(data);
+
+    kpiBalanceLabel.textContent = 'Balance';
+    kpiComiLabel.textContent = 'Comisión';
+    kpiProrrLabel.textContent = 'Prorrateo negativo';
+    kpiDescLabel.textContent = 'Descuento';
+    kpiNetoLabel.textContent = 'Pago neto';
+
     kpiCargas.textContent = `Bs ${fmt.format(data.cargas||0)}`;
     kpiRetiros.textContent = `Bs ${fmt.format(data.retiros||0)}`;
 
@@ -337,27 +405,25 @@
 
     kpiComi.textContent = `${fmt.format(data.rangoComision||0)}%`;
 
-    // Prorrateo negativo (normalmente negativo)
     kpiProrr.textContent = `Bs ${fmt.format(data.prorrateoNegativo||0)}`;
     if ((data.prorrateoNegativo||0) < 0) kpiProrrBox.classList.add('neg');
     else kpiProrrBox.classList.add('warn');
 
-    // Descuento (se muestra como negativo fijo)
     const descVal = -Math.abs(data.descuento||0);
     kpiDesc.textContent = `Bs ${fmt.format(descVal)}`;
     kpiDescBox.classList.add('warn');
 
-    // Pago neto (subtotal)
-    kpiNeto.textContent = `Bs ${fmt.format(data.subTotal||0)}`;
-    kpiNetoBox.classList.add((data.subTotal||0) >= 0 ? 'pos' : 'neg');
-  };
+    const neto = data.pagoNeto || data.subTotal || 0;
+    kpiNeto.textContent = `Bs ${fmt.format(neto)}`;
+    kpiNetoBox.classList.add(neto >= 0 ? 'pos' : 'neg');
+  }
 
-  // Vista inicial (?view=prev)
+  const render = (data)=> isGananciaMensual ? renderGanancia(data) : renderBalance(data);
+
   const initialView = (getS('view','curr').toLowerCase()==='prev') ? 'prev' : 'curr';
   setTabState(initialView);
   render(initialView==='curr' ? dataCurr : dataPrev);
 
-  // Tabs
   tabCurr.addEventListener('click', ()=>{
     setTabState('curr');
     render(dataCurr);

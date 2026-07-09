@@ -1,1561 +1,211 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MiniApp • Catálogo de Productos</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
-  <!-- Leaflet (para mapa interactivo tipo Google Maps) -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
-  </script>
-
-  <style>
-    :root {
-      --primary: #4a90e2;
-      --bg: #f5f7fb;
-      --card: #ffffff;
-      --text: #222222;
-      --muted: #6b7280;
-      --border: #e5e7eb;
-      --danger: #e11d48;
-      --success: #16a34a;
-      --backdrop: rgba(15, 23, 42, 0.35);
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      padding: 12px;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-    }
-
-    .app-header {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      margin-bottom: 8px;
-    }
-
-    .app-title {
-      font-size: 1.2rem;
-      font-weight: 600;
-    }
-
-    .app-subtitle {
-      font-size: 0.9rem;
-      color: var(--muted);
-    }
-
-    /* NAV DE PASOS */
-
-    .steps-nav {
-      display: flex;
-      gap: 4px;
-      margin-bottom: 10px;
-      overflow-x: auto;
-    }
-
-    .step-nav-btn {
-      flex: 1;
-      min-width: 0;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      padding: 4px 6px;
-      font-size: 0.8rem;
-      background: #f9fafb;
-      color: var(--muted);
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    .step-nav-btn.step-nav-active {
-      background: rgba(37, 99, 235, 0.1);
-      border-color: var(--primary);
-      color: var(--primary);
-      font-weight: 600;
-    }
-
-    .step { display: none; }
-    .step-active { display: block; }
-
-    /* PRODUCTOS */
-
-    .products-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 12px;
-    }
-
-    .product-card {
-      background: var(--card);
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
-      cursor: pointer;
-    }
-
-    .product-clickable {
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-    }
-
-    .product-image-wrapper {
-      width: 100%;
-      padding-top: 60%;
-      position: relative;
-      overflow: hidden;
-      background: #ffffff;
-    }
-
-    .product-image-wrapper img {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-
-    .product-body {
-      padding: 10px 10px 4px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      flex: 1;
-    }
-
-    .product-name {
-      font-size: 0.95rem;
-      font-weight: 600;
-    }
-
-    .product-description {
-      font-size: 0.75rem;
-      color: var(--muted);
-      line-height: 1.3;
-      min-height: 2.4em;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-    }
-
-    .product-price-stock {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 4px;
-      font-size: 0.8rem;
-    }
-
-    .price { font-weight: 700; }
-    .stock { font-size: 0.75rem; }
-    .stock-low { color: var(--danger); }
-    .stock-ok { color: var(--success); }
-
-    .product-footer {
-      padding: 8px 10px 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .qty-wrapper {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-    }
-
-    .qty-btn {
-      border: 1px solid var(--border);
-      background: #f9fafb;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 1rem;
-      cursor: pointer;
-      outline: none;
-      min-width: 32px;
-      text-align: center;
-    }
-
-    .qty-btn:active {
-      background: rgba(15, 23, 42, 0.06);
-    }
-
-    .qty-input {
-      width: 48px;
-      text-align: center;
-      font-size: 0.85rem;
-      padding: 4px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      outline: none;
-    }
-
-    .qty-input:focus {
-      border-color: var(--primary);
-    }
-
-    .cart-pill {
-      font-size: 0.75rem;
-      padding: 4px 8px;
-      border-radius: 999px;
-      background: rgba(37, 99, 235, 0.06);
-      color: var(--primary);
-      border: 1px solid rgba(37, 99, 235, 0.15);
-      white-space: nowrap;
-      text-align: center;
-    }
-
-    .cart-summary {
-      position: sticky;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      margin-top: 10px;
-      padding: 8px 10px;
-      background: linear-gradient(to top, var(--bg) 80%, transparent);
-      font-size: 0.85rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .cart-summary-label { color: var(--muted); }
-
-    .cart-summary-main { font-weight: 600; }
-
-    .badge-empty { color: var(--muted); }
-
-    /* MODAL DETALLE PRODUCTO */
-
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: var(--backdrop);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-      z-index: 50;
-    }
-
-    .modal-backdrop.show {
-      display: flex;
-    }
-
-    .modal-content {
-      background: var(--card);
-      border-radius: 16px;
-      max-width: 420px;
-      width: 100%;
-      max-height: 90vh;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
-    }
-
-    .modal-header {
-      padding: 10px 14px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid var(--border);
-      gap: 8px;
-    }
-
-    .modal-title {
-      font-size: 1rem;
-      font-weight: 600;
-    }
-
-    .modal-close {
-      border: none;
-      background: transparent;
-      font-size: 1.2rem;
-      cursor: pointer;
-      padding: 2px 6px;
-      line-height: 1;
-    }
-
-    .modal-image-wrapper {
-      width: 100%;
-      padding-top: 70%;
-      position: relative;
-      overflow: hidden;
-      background: #ffffff;
-    }
-
-    .modal-image-wrapper img {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-
-    .modal-body {
-      padding: 10px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      overflow-y: auto;
-    }
-
-    .modal-description {
-      font-size: 0.85rem;
-      color: var(--muted);
-      line-height: 1.4;
-    }
-
-    .modal-price-stock {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.85rem;
-      margin-top: 4px;
-    }
-
-    .modal-footer {
-      padding: 10px 14px 12px;
-      border-top: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .modal-qty-label {
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
-
-    .modal-subtotal {
-      font-size: 0.85rem;
-      font-weight: 600;
-      text-align: right;
-    }
-
-    /* PASO 2: ENTREGA */
-
-    .section-title {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-
-    .section-text {
-      font-size: 0.85rem;
-      color: var(--muted);
-      margin-bottom: 10px;
-    }
-
-    .card {
-      background: var(--card);
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      padding: 10px;
-      margin-bottom: 10px;
-      box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04);
-    }
-
-    .map-container {
-      width: 100%;
-      height: 200px;
-      border-radius: 10px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      margin-top: 8px;
-    }
-
-    #map {
-      width: 100%;
-      height: 100%;
-    }
-
-    .btn-secondary {
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      padding: 6px 12px;
-      font-size: 0.85rem;
-      background: #f9fafb;
-      cursor: pointer;
-      margin-top: 6px;
-    }
-
-    .field-group {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      margin-bottom: 8px;
-    }
-
-    .field-label {
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
-
-    .field-input, .field-textarea {
-      width: 100%;
-      font-size: 0.9rem;
-      padding: 6px 8px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      outline: none;
-    }
-
-    .field-input:focus, .field-textarea:focus {
-      border-color: var(--primary);
-    }
-
-    .field-textarea {
-      resize: vertical;
-      min-height: 60px;
-    }
-
-    .helper-text {
-      font-size: 0.75rem;
-      color: var(--muted);
-    }
-
-    /* PASO 3: PAGO */
-
-    .payment-options {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-top: 6px;
-    }
-
-    .payment-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 8px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: #f9fafb;
-    }
-
-    .payment-item input[type="radio"] {
-      transform: scale(1.1);
-    }
-
-    .payment-label-main {
-      font-size: 0.9rem;
-      font-weight: 500;
-    }
-
-    .payment-label-sub {
-      font-size: 0.75rem;
-      color: var(--muted);
-    }
-
-    /* PASO 4: RESUMEN FINAL */
-
-    .items-list {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-top: 4px;
-    }
-
-    .item-row {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      padding: 6px 8px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: #f9fafb;
-      font-size: 0.85rem;
-    }
-
-    .item-row-primary {
-      display: flex;
-      justify-content: space-between;
-      font-weight: 500;
-    }
-
-    .item-row-secondary {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
-
-    .summary-row {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 4px;
-      font-size: 0.85rem;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      background: rgba(37, 99, 235, 0.06);
-      color: var(--primary);
-      border: 1px solid rgba(37, 99, 235, 0.2);
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tienda MiniApp</title>
+<style>
+:root{
+  --brand:#0f766e;--brand2:#14b8a6;--dark:#082f49;--accent:#f59e0b;--bg:#f3f7f8;--card:#fff;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--ok:#16a34a;--danger:#dc2626;--shadow:0 14px 34px rgba(2,44,34,.10);--radius:24px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;font-size:14px}body{overflow-x:hidden}button,input,textarea{font-family:inherit}button{cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none}a{color:var(--brand);text-decoration:none}.app{max-width:520px;margin:0 auto;min-height:100vh;background:linear-gradient(180deg,#e9f8f6 0,#fff 210px,#f7fafb 100%);position:relative;overflow-x:hidden}.top{position:sticky;top:0;z-index:30;background:linear-gradient(135deg,#063b4a 0%,#0f766e 58%,#f59e0b 145%);padding:16px 16px 14px;border-bottom-left-radius:28px;border-bottom-right-radius:28px;box-shadow:0 16px 30px rgba(8,47,73,.20)}.topRow{display:flex;align-items:center;gap:12px}.logo{width:52px;height:52px;border-radius:18px;background:#fff;color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;box-shadow:0 8px 20px rgba(0,0,0,.14);flex:0 0 auto}.search{height:52px;flex:1;background:#fff;border-radius:18px;display:flex;align-items:center;gap:9px;padding:0 14px;box-shadow:0 8px 20px rgba(0,0,0,.12)}.search b{font-size:22px;color:var(--brand)}.search input{border:0;outline:0;width:100%;font-size:16px;background:transparent}.address{margin:12px 0 0;background:rgba(255,255,255,.95);border:1px solid rgba(255,255,255,.7);border-radius:20px;padding:12px;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}.address .ico{font-size:23px}.address small{display:block;color:var(--muted);margin-bottom:2px}.address b{font-size:15px}.linkBtn{border:0;background:transparent;color:#0369a1;font-weight:900;font-size:14px}.wrap{padding:16px 14px 188px}.screen{display:none}.screen.active{display:block}.steps{display:flex;gap:8px;overflow-x:auto;padding:1px 0 12px;scrollbar-width:none}.steps::-webkit-scrollbar{display:none}.step{white-space:nowrap;background:#fff;border:1px solid var(--line);border-radius:999px;padding:7px 10px;color:var(--muted);font-size:12px}.step.active{background:#d1fae5;border-color:#5eead4;color:#0f766e;font-weight:900}.sectionHead{display:flex;align-items:center;justify-content:space-between;margin:14px 0 10px}.sectionHead h2{font-size:22px;letter-spacing:-.4px;margin:0}.sectionHead button{border:0;background:transparent;color:#0369a1;font-weight:900}.cats{display:flex;gap:12px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}.cats::-webkit-scrollbar{display:none}.cat{width:88px;flex:0 0 88px;text-align:center;background:transparent;border:0;color:var(--ink);padding:0}.catArt{height:82px;border-radius:22px;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-shadow:0 9px 22px rgba(15,23,42,.07);overflow:hidden}.catArt svg{width:100%;height:100%;display:block}.cat.active .catArt{border:2px solid var(--brand);box-shadow:0 12px 26px rgba(15,118,110,.20)}.catName{font-weight:800;line-height:1.05;margin-top:7px;font-size:13px}.banners{display:flex;gap:12px;overflow-x:auto;margin:0 -14px 18px;padding:0 14px 8px;scrollbar-width:none}.banners::-webkit-scrollbar{display:none}.banner{min-width:78%;height:132px;border-radius:26px;padding:18px;color:#fff;position:relative;overflow:hidden;display:flex;align-items:flex-end;box-shadow:var(--shadow);background:linear-gradient(135deg,#083344,#0f766e)}.banner.alt{background:linear-gradient(135deg,#431407,#f59e0b)}.banner:before{content:"";position:absolute;right:-42px;top:-54px;width:178px;height:178px;border-radius:50%;background:rgba(255,255,255,.18)}.banner h3{margin:0;font-size:28px;line-height:.92;letter-spacing:-.9px}.banner p{margin:8px 0 0;opacity:.95}.codeCard,.card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:15px;box-shadow:0 10px 25px rgba(15,23,42,.06);margin-bottom:12px}.codeCard input,.card input,.card textarea{width:100%;border:1px solid var(--line);border-radius:16px;padding:13px 14px;outline:0;font-size:15px;background:#fff}.hint{font-size:12px;color:var(--muted);line-height:1.35;margin-top:8px}.ok{color:var(--ok)}.products{display:grid;grid-template-columns:1fr 1fr;gap:12px}.product{background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:0 10px 25px rgba(15,23,42,.06);overflow:hidden;position:relative;min-height:245px}.pArt{height:128px;background:#eff6ff;display:flex;align-items:center;justify-content:center}.pArt svg{width:100%;height:100%;display:block}.badge{position:absolute;left:9px;top:9px;background:#0f766e;color:#fff;border-radius:999px;padding:4px 8px;font-weight:900;font-size:11px}.pBody{padding:10px 10px 54px}.pName{font-weight:950;line-height:1.1;min-height:34px}.pMeta{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.25;min-height:30px}.price{font-weight:950;font-size:18px;color:var(--dark);margin-top:8px}.add{position:absolute;right:10px;bottom:10px;width:42px;height:42px;border-radius:15px;border:0;background:var(--dark);color:#fff;font-size:27px;line-height:1;box-shadow:0 10px 20px rgba(8,47,73,.25)}.qty{position:absolute;right:8px;bottom:10px;display:flex;align-items:center;gap:5px;background:var(--dark);border-radius:16px;padding:5px}.qty button{width:28px;height:28px;border:0;border-radius:11px;background:#fff;color:var(--dark);font-weight:950}.qty span{color:#fff;font-weight:950;min-width:18px;text-align:center}.choice{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:23px;padding:14px;margin-bottom:10px}.choice.selected{border-color:var(--brand);background:#ecfdf5;box-shadow:0 10px 25px rgba(15,118,110,.12)}.choice b{display:block}.choice small{display:block;color:var(--muted);line-height:1.35}.choice input{width:auto}.choiceIcon{font-size:29px}.row{display:flex;gap:10px}.btn{border:0;border-radius:17px;padding:13px 16px;font-weight:950}.btnPrimary{background:linear-gradient(135deg,#083344,#0f766e);color:#fff}.btnSoft{background:#e6fffb;color:#0f766e}.mapbox{height:235px;border-radius:20px;overflow:hidden;border:1px solid var(--line);background:#dbeafe;margin-top:10px}.tilemap{position:relative;width:100%;height:100%;overflow:hidden;background:#dbeafe;touch-action:none;cursor:grab}.tilemap img{position:absolute;width:256px;height:256px;user-select:none;-webkit-user-drag:none}.pin{position:absolute;transform:translate(-50%,-100%);font-size:34px;text-shadow:0 2px 4px rgba(0,0,0,.25);z-index:5;pointer-events:none}.cross{position:absolute;left:50%;top:50%;width:18px;height:18px;margin-left:-9px;margin-top:-9px;border:2px solid var(--brand);border-radius:50%;z-index:4;pointer-events:none}.maphint{position:absolute;left:9px;right:9px;bottom:9px;background:rgba(255,255,255,.95);border-radius:12px;padding:8px 10px;font-size:11px;text-align:center;color:#0f172a;z-index:6}.listLine{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:1px dashed var(--line);padding:10px 0}.listLine:last-child{border-bottom:0}.muted{color:var(--muted)}.totalText{font-size:21px;font-weight:950;color:var(--brand)}.success{text-align:center;padding:25px 8px}.check{width:82px;height:82px;border-radius:28px;background:linear-gradient(135deg,#0f766e,#22c55e);color:#fff;display:flex;align-items:center;justify-content:center;margin:14px auto;font-size:44px;font-weight:950;box-shadow:0 14px 28px rgba(15,118,110,.25)}.alert{background:#f8fafc;border:1px solid var(--line);border-radius:18px;padding:12px;font-size:12px;line-height:1.4;color:#334155}.receipt{background:#fff;border:1px solid var(--line);border-radius:24px;padding:16px;box-shadow:var(--shadow)}.receipt h3{text-align:center;margin:4px 0 12px}.receipt table{width:100%;border-collapse:collapse;font-size:11px}.receipt th,.receipt td{border-bottom:1px solid #eee;padding:7px 4px;text-align:left}.bottom{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:520px;z-index:40;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:8px 14px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -12px 28px rgba(15,23,42,.08)}.bottomPromo{background:#fff;border:1px solid var(--line);border-radius:18px;padding:8px 10px;margin-bottom:8px;box-shadow:0 8px 18px rgba(15,23,42,.06)}.promoToggle{width:100%;border:0;background:#eefbf9;color:var(--brand);border-radius:14px;padding:10px 12px;font-weight:950;display:flex;align-items:center;justify-content:space-between}.promoToggle span{font-size:13px}.promoToggle small{font-size:17px;line-height:1}.promoBody{display:none;padding-top:8px}.bottomPromo.open .promoBody{display:block}.bottomPromo input{width:100%;border:1px solid var(--line);border-radius:14px;padding:11px 12px;outline:0;font-size:14px}.bottomPromo .hint{margin-top:6px}.bottomActions{display:flex;justify-content:space-between;align-items:center;gap:12px}.mainBtn{min-width:138px}.nav{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:8px}.nav button{border:0;background:transparent;color:#64748b;font-size:11px;font-weight:700}.nav b{display:block;font-size:20px;color:#082f49;margin-bottom:2px}.hide{display:none!important}.empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:25px;background:#fff;border:1px solid var(--line);border-radius:22px}@media(max-width:390px){.products{gap:10px}.product{min-height:236px}.pArt{height:116px}.cat{width:80px;flex-basis:80px}.catArt{height:76px}.banner{height:124px}.banner h3{font-size:24px}.wrap{padding-left:12px;padding-right:12px}.top{padding-left:12px;padding-right:12px}.mainBtn{min-width:122px}}
+</style>
 </head>
 <body>
-  <div class="app-header">
-    <div class="app-title" id="headerTitle">🛒 Catálogo de Productos</div>
-    <div class="app-subtitle" id="headerSubtitle">
-      Toca un producto para ver el detalle. Usa +, − o escribe la cantidad. Abajo verás el total.
+<div class="app">
+  <header class="top">
+    <div class="topRow">
+      <div class="logo">TB</div>
+      <div class="search"><b>⌕</b><input id="search" placeholder="Buscar productos" oninput="filterProducts()"></div>
     </div>
-  </div>
+    <div class="address"><div class="ico">⌖</div><div><small>Entregar ahora en</small><b id="locationLabel">Santa Cruz de la Sierra</b></div><button class="linkBtn" onclick="goStep(2)">Cambiar</button></div>
+  </header>
 
-  <!-- NAV PASOS -->
-  <div class="steps-nav">
-    <button class="step-nav-btn step-nav-active" data-step="1">1. Productos</button>
-    <button class="step-nav-btn" data-step="2">2. Entrega</button>
-    <button class="step-nav-btn" data-step="3">3. Pago</button>
-    <button class="step-nav-btn" data-step="4">4. Resumen</button>
-  </div>
+  <main class="wrap">
+    <div class="steps" id="steps"></div>
 
-  <!-- PASO 1: PRODUCTOS -->
-  <div id="step1" class="step step-active">
-    <div id="productsContainer" class="products-grid"></div>
+    <section id="screen1" class="screen active">
+      <div class="sectionHead"><h2>Categorías</h2><button onclick="selectCat('TODOS')">Ver todo</button></div>
+      <div class="cats" id="categories">
+        <button class="cat active" data-cat="TODOS" onclick="selectCat('TODOS')"><div class="catArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0f766e"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">🛒</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">TODO</text></svg></div><div class="catName">Todos</div></button>
+        <button class="cat" data-cat="COCA" onclick="selectCat('COCA')"><div class="catArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ef4444"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">🥤</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">COCA</text></svg></div><div class="catName">Coca</div></button>
+        <button class="cat" data-cat="SODAS" onclick="selectCat('SODAS')"><div class="catArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0ea5e9"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">🧊</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">SODAS</text></svg></div><div class="catName">Sodas</div></button>
+        <button class="cat" data-cat="SNACK" onclick="selectCat('SNACK')"><div class="catArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f59e0b"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">🍟</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">SNACK</text></svg></div><div class="catName">Snack</div></button>
+        <button class="cat" data-cat="TRAGOS" onclick="selectCat('TRAGOS')"><div class="catArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7c3aed"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">🍾</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">TRAGOS</text></svg></div><div class="catName">Tragos</div></button>
+        <button class="cat" data-cat="CIGARROS" onclick="selectCat('CIGARROS')"><div class="catArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#111827"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">▥</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">PACK</text></svg></div><div class="catName">Cigarros</div></button>
+        <button class="cat" data-cat="CERVEZAS" onclick="selectCat('CERVEZAS')"><div class="catArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#eab308"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">🍺</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">CERVEZA</text></svg></div><div class="catName">Cervezas</div></button>
+        <button class="cat" data-cat="ENERGIZANTES" onclick="selectCat('ENERGIZANTES')"><div class="catArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#22c55e"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">⚡</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">ENERGY</text></svg></div><div class="catName">Energizantes</div></button>
+      </div>
 
-    <div id="cartSummary" class="cart-summary">
-      <span class="cart-summary-label">Total:</span>
-      <span id="cartInfo" class="cart-summary-main badge-empty">Bs. 0.00 (0 prod.)</span>
+      <div class="banners">
+        <div class="banner"><div><h3>Tienda<br>TIGER BET</h3><p>Productos, promociones y pago rápido.</p></div></div>
+        <div class="banner alt"><div><h3>Delivery<br>con bot</h3><p>El envío se asigna al primer delivery libre.</p></div></div>
+      </div>
+
+      <div class="sectionHead"><h2>Productos</h2><button onclick="selectCat('TODOS')">Mostrar más</button></div>
+      <div class="products" id="products">
+        <article class="product" data-id="1" data-cat="COCA" data-name="YOGOBULL" data-desc="Gaseosa especial 2L" data-price="10" data-stock="12">
+  <div class="pArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ef4444"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">🥤</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">YOGOBULL</text></svg></div>
+  <div class="badge">-14%</div>
+  <div class="pBody"><div class="pName">YOGOBULL</div><div class="pMeta">Gaseosa especial 2L · Stock 12</div><div class="price">Bs. 10.00</div></div><div class="buyBox"></div>
+</article>
+<article class="product" data-id="2" data-cat="COCA" data-name="QUITA HEMBRA" data-desc="Sabor clásico 2L" data-price="11" data-stock="9">
+  <div class="pArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#dc2626"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">🥤</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">QUITA HEMBRA</text></svg></div>
+  
+  <div class="pBody"><div class="pName">QUITA HEMBRA</div><div class="pMeta">Sabor clásico 2L · Stock 9</div><div class="price">Bs. 11.00</div></div><div class="buyBox"></div>
+</article>
+<article class="product" data-id="3" data-cat="COCA" data-name="SABOR COCHO" data-desc="Botella familiar" data-price="9" data-stock="18">
+  <div class="pArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fb7185"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">🥤</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">SABOR COCHO</text></svg></div>
+  
+  <div class="pBody"><div class="pName">SABOR COCHO</div><div class="pMeta">Botella familiar · Stock 18</div><div class="price">Bs. 9.00</div></div><div class="buyBox"></div>
+</article>
+<article class="product" data-id="4" data-cat="COCA" data-name="7 SABORES" data-desc="Mix de sabores" data-price="12" data-stock="10">
+  <div class="pArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f97316"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">🥤</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">7 SABORES</text></svg></div>
+  <div class="badge">-10%</div>
+  <div class="pBody"><div class="pName">7 SABORES</div><div class="pMeta">Mix de sabores · Stock 10</div><div class="price">Bs. 12.00</div></div><div class="buyBox"></div>
+</article>
+<article class="product" data-id="5" data-cat="SODAS" data-name="Soda Limón" data-desc="Botella personal" data-price="7" data-stock="20">
+  <div class="pArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0ea5e9"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">🧊</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">Soda Limón</text></svg></div>
+  
+  <div class="pBody"><div class="pName">Soda Limón</div><div class="pMeta">Botella personal · Stock 20</div><div class="price">Bs. 7.00</div></div><div class="buyBox"></div>
+</article>
+<article class="product" data-id="6" data-cat="SODAS" data-name="Agua con Gas" data-desc="500 ml" data-price="5" data-stock="30">
+  <div class="pArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#38bdf8"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">💧</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">Agua con Gas</text></svg></div>
+  
+  <div class="pBody"><div class="pName">Agua con Gas</div><div class="pMeta">500 ml · Stock 30</div><div class="price">Bs. 5.00</div></div><div class="buyBox"></div>
+</article>
+<article class="product" data-id="7" data-cat="SNACK" data-name="Nachos Max" data-desc="Bolsa grande" data-price="12" data-stock="16">
+  <div class="pArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f59e0b"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">🍟</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">Nachos Max</text></svg></div>
+  <div class="badge">-12%</div>
+  <div class="pBody"><div class="pName">Nachos Max</div><div class="pMeta">Bolsa grande · Stock 16</div><div class="price">Bs. 12.00</div></div><div class="buyBox"></div>
+</article>
+<article class="product" data-id="8" data-cat="SNACK" data-name="Papas Clásicas" data-desc="Bolsa familiar" data-price="8" data-stock="22">
+  <div class="pArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#eab308"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">🍟</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">Papas Clásic</text></svg></div>
+  
+  <div class="pBody"><div class="pName">Papas Clásicas</div><div class="pMeta">Bolsa familiar · Stock 22</div><div class="price">Bs. 8.00</div></div><div class="buyBox"></div>
+</article>
+<article class="product" data-id="9" data-cat="TRAGOS" data-name="Licor Premium" data-desc="Botella 750 ml" data-price="65" data-stock="6">
+  <div class="pArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7c2dff"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">🍾</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">Licor Premiu</text></svg></div>
+  
+  <div class="pBody"><div class="pName">Licor Premium</div><div class="pMeta">Botella 750 ml · Stock 6</div><div class="price">Bs. 65.00</div></div><div class="buyBox"></div>
+</article>
+<article class="product" data-id="10" data-cat="TRAGOS" data-name="Listo para tomar" data-desc="Pack lata" data-price="35" data-stock="14">
+  <div class="pArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a855f7"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">🍹</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">Listo para t</text></svg></div>
+  
+  <div class="pBody"><div class="pName">Listo para tomar</div><div class="pMeta">Pack lata · Stock 14</div><div class="price">Bs. 35.00</div></div><div class="buyBox"></div>
+</article>
+<article class="product" data-id="11" data-cat="CIGARROS" data-name="Cigarro Pack" data-desc="Paquete sellado" data-price="18" data-stock="10">
+  <div class="pArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#111827"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">▥</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">Cigarro Pack</text></svg></div>
+  
+  <div class="pBody"><div class="pName">Cigarro Pack</div><div class="pMeta">Paquete sellado · Stock 10</div><div class="price">Bs. 18.00</div></div><div class="buyBox"></div>
+</article>
+<article class="product" data-id="12" data-cat="CIGARROS" data-name="Vape Plus" data-desc="Sabor menta" data-price="45" data-stock="8">
+  <div class="pArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#6d28d9"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">💨</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">Vape Plus</text></svg></div>
+  
+  <div class="pBody"><div class="pName">Vape Plus</div><div class="pMeta">Sabor menta · Stock 8</div><div class="price">Bs. 45.00</div></div><div class="buyBox"></div>
+</article>
+<article class="product" data-id="13" data-cat="CERVEZAS" data-name="Cerveza Lata" data-desc="Lata 473 ml" data-price="10" data-stock="30">
+  <div class="pArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#facc15"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">🍺</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">Cerveza Lata</text></svg></div>
+  <div class="badge">-13%</div>
+  <div class="pBody"><div class="pName">Cerveza Lata</div><div class="pMeta">Lata 473 ml · Stock 30</div><div class="price">Bs. 10.00</div></div><div class="buyBox"></div>
+</article>
+<article class="product" data-id="14" data-cat="CERVEZAS" data-name="Pack Cervezas" data-desc="Pack x6" data-price="55" data-stock="12">
+  <div class="pArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f59e0b"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">🍺</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">Pack Cerveza</text></svg></div>
+  
+  <div class="pBody"><div class="pName">Pack Cervezas</div><div class="pMeta">Pack x6 · Stock 12</div><div class="price">Bs. 55.00</div></div><div class="buyBox"></div>
+</article>
+<article class="product" data-id="15" data-cat="ENERGIZANTES" data-name="Energy Blue" data-desc="Lata 473 ml" data-price="15" data-stock="18">
+  <div class="pArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#22c55e"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">⚡</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">Energy Blue</text></svg></div>
+  
+  <div class="pBody"><div class="pName">Energy Blue</div><div class="pMeta">Lata 473 ml · Stock 18</div><div class="price">Bs. 15.00</div></div><div class="buyBox"></div>
+</article>
+<article class="product" data-id="16" data-cat="ENERGIZANTES" data-name="Monster Mix" data-desc="Energizante premium" data-price="18" data-stock="12">
+  <div class="pArt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#16a34a"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="300" height="220" rx="36" fill="url(#g)"/><circle cx="238" cy="42" r="60" fill="rgba(255,255,255,.24)"/><text x="150" y="92" text-anchor="middle" font-size="56">⚡</text><text x="150" y="154" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">Monster Mix</text></svg></div>
+  
+  <div class="pBody"><div class="pName">Monster Mix</div><div class="pMeta">Energizante premium · Stock 12</div><div class="price">Bs. 18.00</div></div><div class="buyBox"></div>
+</article>
+      </div>
+    </section>
+
+    <section id="screen2" class="screen">
+      <div class="sectionHead"><h2>Entrega</h2></div>
+      <label class="choice selected"><input type="radio" name="delivery" value="delivery" checked onchange="setDelivery(this.value)"><div><b>Delivery a domicilio</b><small>El delivery recibirá el pedido por Telegram con el mapa del cliente.</small></div><div class="choiceIcon">🛵</div></label>
+      <label class="choice"><input type="radio" name="delivery" value="pickup" onchange="setDelivery(this.value)"><div><b>Recoger en tienda</b><small>Retiro directo en TIGER BET - Punto Central.</small></div><div class="choiceIcon">🏪</div></label>
+      <div id="deliveryData" class="card"><b>Datos para delivery</b><input id="address" placeholder="Dirección" style="margin-top:9px"><input id="reference" placeholder="Referencia: casa azul, timbre 38..." style="margin-top:9px"><input id="phone" placeholder="Teléfono de contacto" inputmode="tel" style="margin-top:9px"><div class="mapbox"><div id="tileMap" class="tilemap" onclick="pickMapPoint(event)"><div class="cross"></div><div id="mapPin" class="pin" style="display:none">📍</div><div id="mapHint" class="maphint">Arrastra el mapa para buscar. Presiona “Punto manual” y toca el punto exacto.</div></div></div><div class="row" style="margin-top:10px"><button class="btn btnSoft" style="flex:1" onclick="useLocation()">Usar mi ubicación actual</button><button class="btn btnSoft" onclick="manualLocation()">Punto manual</button></div><div id="locStatus" class="hint">El mapa es obligatorio para delivery.</div></div>
+      <div id="pickupData" class="card hide"><b>TIGER BET - Punto Central</b><div class="hint">Av. Principal #123<br>Santa Cruz, Bolivia<br>Horario: Lunes a Domingo 08:00 - 22:00</div></div>
+    </section>
+
+    <section id="screen3" class="screen"><div class="sectionHead"><h2>Resumen</h2></div><div class="card" id="summary"></div></section>
+    <section id="screen4" class="screen"><div class="sectionHead"><h2>Método de pago</h2></div><div id="payOptions"></div></section>
+    <section id="screen5" class="screen"><div class="success"><div class="check">✓</div><h2>¡Pago exitoso!</h2><p class="muted">Tu pedido ha sido procesado correctamente.</p><div class="card" id="successInfo"></div></div></section>
+    <section id="screen6" class="screen"><div class="receipt"><h3>COMPROBANTE DE PAGO</h3><div id="receipt"></div></div></section>
+  </main>
+
+  <footer class="bottom">
+    <div class="bottomPromo" id="bottomPromo">
+      <button type="button" class="promoToggle" onclick="togglePromo()"><span id="promoToggleText">Código promocional</span><small id="promoToggleIcon">＋</small></button>
+      <div class="promoBody" id="promoBody">
+        <input id="code" placeholder="Ej: LAKOLLITA o C-777" autocomplete="off" inputmode="text" oninput="checkCode()">
+        <div id="codeStatus" class="hint">Sin código. Puedes continuar con la compra.</div>
+      </div>
     </div>
-  </div>
-
-  <!-- PASO 2: ENTREGA -->
-  <div id="step2" class="step">
-    <!-- <div class="section-title">📍 Datos de entrega</div> -->
-    <!-- <div class="section-text"> -->
-      <!-- Selecciona tu ubicación, ingresa una referencia para encontrar el lugar y tu número de teléfono. -->
-    <!-- </div> -->
-
-    <div class="card">
-      <div class="field-label">Ubicación en el mapa *</div>
-      <button id="btnUseLocation" class="btn-secondary">Usar mi ubicación actual</button>
-      <div id="locationStatus" class="helper-text" style="margin-top:4px;">
-        Aún no se ha seleccionado una ubicación.
-      </div>
-      <div class="map-container" style="margin-top:8px;">
-        <div id="map"></div>
-      </div>
-      <div class="helper-text">
-        Es obligatorio seleccionar tu ubicación precisa (si tu dispositivo lo permite).
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="field-group">
-        <label for="deliveryReference" class="field-label">Referencia de entrega *</label>
-        <textarea
-          id="deliveryReference"
-          class="field-textarea"
-          placeholder="Ej: Casa con puerta azul frente a la plaza, tercer piso, timbre 3B..."
-        ></textarea>
-      </div>
-
-      <div class="field-group">
-        <label for="deliveryPhone" class="field-label">Número de teléfono *</label>
-        <input
-          id="deliveryPhone"
-          class="field-input"
-          type="tel"
-          inputmode="tel"
-          placeholder="Ej: 71234567"
-        />
-        <div class="helper-text">
-          Usaremos este número para confirmar tu pedido.
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- PASO 3: PAGO (sin resumen) -->
-  <div id="step3" class="step">
-    <!-- <div class="section-title">💳 Método de pago</div> -->
-    <!-- <div class="section-text"> -->
-      <!-- Elige cómo quieres pagar tu pedido. -->
-    <!-- </div> -->
-     
-
-    <div class="card">
-      <div id="paymentOptions" class="payment-options"></div>
-    </div>
-  </div>
-
-  <!-- PASO 4: RESUMEN FINAL -->
-  <div id="step4" class="step">
-    <!-- <div class="section-title">✅ Revisa tu pedido</div> -->
-    <!-- <div class="section-text"> -->
-      <!-- Verifica todos los datos antes de enviar el pedido al vendedor. -->
-    <!-- </div> -->
-
-    <div class="card">
-      <div class="field-label">Productos seleccionados</div>
-      <div id="finalItemsList" class="items-list"></div>
-      <div class="summary-row" style="margin-top:8px;">
-        <span>Total de productos:</span>
-        <span id="finalItemsCount">0</span>
-      </div>
-      <div class="summary-row">
-        <span>Total a pagar:</span>
-        <span id="finalTotalAmount">Bs. 0.00</span>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="field-label">Datos de entrega</div>
-      <div class="summary-row">
-        <span>Teléfono:</span>
-        <span id="finalPhone">-</span>
-      </div>
-      <div class="summary-row">
-        <span>Referencia:</span>
-        <span id="finalRef">-</span>
-      </div>
-      <div class="summary-row">
-        <span>Ubicación:</span>
-        <span id="finalLocation">Sin ubicación precisa</span>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="summary-row">
-  <span>Método:</span>
-  <strong id="finalPaymentMethod"></strong>
+    <div class="bottomActions"><div><div class="muted" id="bottomLabel">Total productos</div><div class="totalText" id="bottomTotal">Bs. 0.00</div></div><button id="mainBtn" class="btn btnPrimary mainBtn" onclick="nextStep()">Continuar</button></div><div class="nav"><button onclick="goStep(1)"><b>⌂</b>Inicio</button><button onclick="goStep(3)"><b>▤</b>Pedidos</button><button onclick="goStep(1);document.getElementById('search').focus()"><b>⌕</b>Buscar</button><button onclick="showCartInfo()"><b>🛒</b>Carrito</button></div></footer>
 </div>
+<script>
+var BUSINESS='TIGER BET';
+var state={step:1,cat:'TODOS',cart:{},code:'',promo:false,platformCode:false,delivery:'delivery',payment:'qr',lat:null,lng:null};
+function el(id){return document.getElementById(id)}
+function money(n){return 'Bs. '+Number(n||0).toFixed(2)}
+function esc(s){return String(s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function productNodes(){return Array.prototype.slice.call(document.querySelectorAll('.product'))}
+function opLabel(){return 'VENTA CODIGO PROMOCIONAL '+BUSINESS}
+function items(){return productNodes().filter(function(card){return (state.cart[card.dataset.id]||0)>0}).map(function(card){var q=state.cart[card.dataset.id]||0,p=Number(card.dataset.price);return {id:Number(card.dataset.id),cat:card.dataset.cat,name:card.dataset.name,price:p,qty:q,subtotal:p*q}})}
+function totals(){var sub=items().reduce(function(a,i){return a+i.subtotal},0),disc=state.promo?Math.min(5,sub):0;return {subtotal:sub,discount:disc,total:Math.max(0,sub-disc)}}
+function updateSteps(){var names=['Productos','Entrega','Resumen','Pago','Éxito','Comprobante'];el('steps').innerHTML=names.map(function(n,i){return '<span class="step '+(state.step===i+1?'active':'')+'">'+(i+1)+' '+n+'</span>'}).join('')}
+function updateBottom(){var t=totals();el('bottomTotal').textContent=money(t.total);el('bottomLabel').textContent=state.step===1?'Total productos':'Total a pagar';el('mainBtn').textContent=state.step===4?'Pagar':state.step===5?'Ver comprobante':state.step===6?'Cerrar':'Continuar';var bp=el('bottomPromo');if(bp)bp.classList.toggle('hide',state.step!==1)}
+function togglePromo(){var bp=el('bottomPromo');if(!bp)return;bp.classList.toggle('open');el('promoToggleIcon').textContent=bp.classList.contains('open')?'−':'＋';if(bp.classList.contains('open'))setTimeout(function(){el('code').focus()},80)}
 
-<div class="summary-row">
-  <span>Código promocional:</span>
-  <strong id="finalPromoCodigo">-</strong>
-</div>
-
-<div id="finalPaymentDetail" class="muted"></div>      <div class="helper-text" id="finalPaymentDetail" style="margin-top:6px;">
-      </div>
-    </div>
-
-    <div class="helper-text">
-      Cuando presiones <span class="badge">Enviar pedido</span>, tus datos se enviarán al bot para procesar tu compra.
-    </div>
-  </div>
-
-  <!-- MODAL DETALLE PRODUCTO -->
-  <div id="productModal" class="modal-backdrop">
-    <div class="modal-content">
-      <div class="modal-header">
-        <div id="modalTitle" class="modal-title">Producto</div>
-        <button id="modalClose" class="modal-close" aria-label="Cerrar">×</button>
-      </div>
-      <div class="modal-image-wrapper">
-        <img id="modalImage" src="" alt="Producto">
-      </div>
-      <div class="modal-body">
-        <div id="modalDescription" class="modal-description"></div>
-        <div class="modal-price-stock">
-          <span id="modalPrice" class="price">Bs. 0.00</span>
-          <span id="modalStock" class="stock">Stock: 0</span>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <div class="modal-qty-label">Cantidad para este producto:</div>
-        <div class="qty-wrapper" id="modalQtyWrapper">
-          <button class="qty-btn" data-action="dec">−</button>
-          <input
-            type="number"
-            class="qty-input"
-            id="modalQtyInput"
-            value="0"
-            min="0"
-            inputmode="numeric"
-          />
-          <button class="qty-btn" data-action="inc">+</button>
-        </div>
-        <div id="modalSubtotal" class="modal-subtotal">Subtotal: Bs. 0.00</div>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    const tg = window.Telegram?.WebApp;
-    if (tg) {
-      tg.ready();
-      tg.expand && tg.expand();
-      document.documentElement.style.setProperty(
-        "--primary",
-        tg.themeParams.button_color || "#4a90e2"
-      );
-    }
-
-    let products = [];
-    const cart = {}; // { productId: qty }
-    let currentStep = 1;
-
-    // Entrega
-    let deliveryLat = null;
-    let deliveryLng = null;
-
-    // Mapa Leaflet
-    let map = null;
-    let userMarker = null;
-
-    // Pago
-    let selectedPaymentMethod = null;
-
-    const productsContainer = document.getElementById("productsContainer");
-    const cartInfo = document.getElementById("cartInfo");
-
-    const headerTitle = document.getElementById("headerTitle");
-    const headerSubtitle = document.getElementById("headerSubtitle");
-
-    const step1 = document.getElementById("step1");
-    const step2 = document.getElementById("step2");
-    const step3 = document.getElementById("step3");
-    const step4 = document.getElementById("step4");
-
-    const stepsNavButtons = document.querySelectorAll(".step-nav-btn");
-
-    const btnUseLocation = document.getElementById("btnUseLocation");
-    const locationStatus = document.getElementById("locationStatus");
-    const deliveryReferenceInput = document.getElementById("deliveryReference");
-    const deliveryPhoneInput = document.getElementById("deliveryPhone");
-
-    const finalItemsList = document.getElementById("finalItemsList");
-    const finalItemsCount = document.getElementById("finalItemsCount");
-    const finalTotalAmount = document.getElementById("finalTotalAmount");
-    const finalPhone = document.getElementById("finalPhone");
-    const finalRef = document.getElementById("finalRef");
-    const finalLocation = document.getElementById("finalLocation");
-    const finalPaymentMethod = document.getElementById("finalPaymentMethod");
-    const finalPaymentDetail = document.getElementById("finalPaymentDetail");
-    const finalPromoCodigo = document.getElementById("finalPromoCodigo");
-    const paymentOptionsContainer = document.getElementById("paymentOptions");
-
-    // Modal
-    const productModal = document.getElementById("productModal");
-    const modalTitle = document.getElementById("modalTitle");
-    const modalImage = document.getElementById("modalImage");
-    const modalDescription = document.getElementById("modalDescription");
-    const modalPrice = document.getElementById("modalPrice");
-    const modalStock = document.getElementById("modalStock");
-    const modalClose = document.getElementById("modalClose");
-    const modalQtyInput = document.getElementById("modalQtyInput");
-    const modalSubtotal = document.getElementById("modalSubtotal");
-    const modalQtyWrapper = document.getElementById("modalQtyWrapper");
-
-    let currentModalProductId = null;
-
-    // Métodos de pago conocidos
-    const creditDefinitions = {
-      apueston: {
-        value: "credito_apueston",
-        main: "Crédito Apueston",
-        sub: "Usarás tu saldo de crédito en Apueston."
-      },
-      metabet: {
-        value: "credito_metabet",
-        main: "Crédito Metabet",
-        sub: "Usarás tu saldo de crédito en Metabet."
-      },
-      pppokerus: {
-        value: "credito_pppoker_us",
-        main: "Crédito PPPoker USA",
-        sub: "Usarás tu crédito en PPPoker (US)."
-      },
-      pppokersol: {
-        value: "credito_pppoker_sol",
-        main: "Crédito PPPoker Sol",
-        sub: "Usarás tu crédito en PPPoker (Sol)."
-      }
-    };
-
-    function getPaymentLabel(value) {
-  if (value === "transferencia") return "Pago por QR";
-  if (value === "efectivo") return "Pago en efectivo";
-// --------- agregado pago por efectivo ---------
-  for (const key in creditDefinitions) { 
-    if (creditDefinitions[key].value === value) {
-      return creditDefinitions[key].main;
-    }
-  }
-  return value || "-";
+function enableMobileControls(){
+  document.querySelectorAll('button').forEach(function(btn){
+    if(!btn.getAttribute('type')) btn.setAttribute('type','button');
+    if(btn.dataset.touchReady==='1') return;
+    btn.dataset.touchReady='1';
+    btn.addEventListener('touchend',function(ev){
+      if(ev.cancelable) ev.preventDefault();
+      if(btn.disabled) return;
+      setTimeout(function(){ btn.click(); },0);
+    },{passive:false});
+  });
 }
 
-   function getPaymentDetail(value) {
-  if (value === "transferencia") {
-    return "Pagarás mediante Pago por QR. El vendedor te enviará el QR.";
-  }
-//--------AGREGADO PARA PAGO EN EFECTIVO---------
-  if (value === "efectivo") {
-    return "Pagarás en efectivo al momento de la entrega.";
-  }
-
-  for (const key in creditDefinitions) {
-    if (creditDefinitions[key].value === value) {
-      return creditDefinitions[key].sub;
-    }
-  }
-  return "";
-}
-
-
-    // --------- MAPA: init y manejo de marcador draggable ---------
-
-    function setUserLocation(lat, lng, source) {
-      deliveryLat = lat;
-      deliveryLng = lng;
-
-      const latlng = [lat, lng];
-
-      if (!userMarker) {
-        userMarker = L.marker(latlng, { draggable: true }).addTo(map);
-        userMarker.on("dragend", (e) => {
-          const pos = e.target.getLatLng();
-          deliveryLat = pos.lat;
-          deliveryLng = pos.lng;
-          locationStatus.textContent =
-            `Ubicación ajustada: ${deliveryLat.toFixed(5)}, ${deliveryLng.toFixed(5)}`;
-        });
-      } else {
-        userMarker.setLatLng(latlng);
-      }
-
-      const label =
-        source === "drag"
-          ? "Ubicación ajustada"
-          : source === "click"
-          ? "Ubicación seleccionada"
-          : "Ubicación seleccionada";
-
-      locationStatus.textContent =
-        `${label}: ${deliveryLat.toFixed(5)}, ${deliveryLng.toFixed(5)}`;
-
-      map.setView(latlng, 17, { animate: true });
-    }
-
-    function initMap() {
-      const bolCenter = [-16.29, -63.59]; // Bolivia
-      map = L.map('map').setView(bolCenter, 6);
-
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(map);
-
-      // Permitir seleccionar lugar haciendo tap en el mapa
-      map.on("click", (e) => {
-        setUserLocation(e.latlng.lat, e.latlng.lng, "click");
-      });
-    }
-
-    // Totales del carrito
-    function getCartTotals() {
-      let totalItems = 0;
-      let totalAmount = 0;
-
-      Object.keys(cart).forEach((idStr) => {
-        const id = Number(idStr);
-        const qty = cart[id];
-        const product = products.find((x) => x.id === id);
-        if (!product) return;
-        totalItems += qty;
-        totalAmount += qty * product.price;
-      });
-
-      return { totalItems, totalAmount };
-    }
-
-    // Actualizar nav de pasos
-    function updateStepsNav() {
-      stepsNavButtons.forEach(btn => {
-        const step = Number(btn.dataset.step);
-        btn.classList.toggle("step-nav-active", step === currentStep);
-      });
-    }
-
-    // Actualizar botón principal según paso
-    function updateMainButton() {
-      if (!tg) return;
-      const { totalItems, totalAmount } = getCartTotals();
-
-      if (currentStep === 1) {
-        if (totalItems === 0) {
-          tg.MainButton.hide();
-        } else {
-          tg.MainButton.setText(`Continuar • Bs. ${totalAmount.toFixed(2)}`);
-          tg.MainButton.show();
-        }
-      } else if (currentStep === 2 || currentStep === 3) {
-        tg.MainButton.setText("Continuar");
-        tg.MainButton.show();
-      } else if (currentStep === 4) {
-        if (totalItems === 0) {
-          tg.MainButton.hide();
-        } else {
-          tg.MainButton.setText(`Enviar pedido • Bs. ${totalAmount.toFixed(2)}`);
-          tg.MainButton.show();
-        }
-      }
-    }
-
-    function goToStep(step) {
-      currentStep = step;
-
-      [step1, step2, step3, step4].forEach(s => s.classList.remove("step-active"));
-
-      if (step === 1) {
-        step1.classList.add("step-active");
-        headerTitle.textContent = "🛒 Catálogo de Productos";
-        headerSubtitle.textContent = "Toca un producto para ver el detalle. Usa +, − o escribe la cantidad. Abajo verás el total.";
-      } else if (step === 2) {
-        step2.classList.add("step-active");
-        headerTitle.textContent = "📍 Datos de entrega";
-        headerSubtitle.textContent = "Selecciona tu ubicación, referencia y número de teléfono.";
-        // Ajustar mapa al hacerse visible
-        if (map) {
-          setTimeout(() => {
-            map.invalidateSize();
-          }, 200);
-        }
-      } else if (step === 3) {
-        step3.classList.add("step-active");
-        headerTitle.textContent = "💳 Método de pago";
-        headerSubtitle.textContent = "Elige cómo pagarás tu pedido.";
-      } else if (step === 4) {
-        step4.classList.add("step-active");
-        headerTitle.textContent = "✅ Confirmar pedido";
-        headerSubtitle.textContent = "Revisa todo y envía tu pedido al vendedor.";
-        actualizarResumenPaso4();
-      }
-
-      updateStepsNav();
-      updateMainButton();
-    }
-
-    // Cargar productos desde ?products=<JSON codificado>
-    function initProducts() {
-      try {
-        const params = new URLSearchParams(window.location.search);
-        const productsParam = params.get("products");
-
-        if (productsParam) {
-          let raw = null;
-          try {
-            raw = JSON.parse(productsParam);
-          } catch (e1) {
-            try {
-              const decoded = decodeURIComponent(productsParam);
-              raw = JSON.parse(decoded);
-            } catch (e2) {
-              console.warn("Error al parsear 'products' desde la URL:", e1, e2);
-            }
-          }
-
-          if (Array.isArray(raw) && raw.length > 0) {
-            products = raw.map((p, index) => {
-              const id = p.id != null ? p.id : index + 1;
-              const name = p.nombre ?? p.name ?? `Producto ${id}`;
-              const description = p.descripcion ?? p.description ?? "";
-              const price = Number(p.precio ?? p.price ?? 0) || 0;
-              const image =
-                p.imagen && typeof p.imagen === "string" && p.imagen.trim() !== ""
-                  ? p.imagen
-                  : "https://via.placeholder.com/600x400?text=Sin+Imagen";
-              const stock = Number(p.stock ?? 0) || 0;
-
-              return { id, name, description, price, image, stock };
-            });
-            return;
-          }
-        }
-      } catch (e) {
-        console.warn("Error general al leer 'products' desde la URL:", e);
-      }
-
-      // Fallback demo
-      products = [
-        {
-          id: 1,
-          name: "Producto Demo 1",
-          description: "Ejemplo de producto. Pásame tus productos en el parámetro ?products=...",
-          price: 10.0,
-          image: "https://via.placeholder.com/600x400?text=Demo+1",
-          stock: 5,
-        },
-        {
-          id: 2,
-          name: "Producto Demo 2",
-          description: "Otro ejemplo de producto.",
-          price: 20.5,
-          image: "https://via.placeholder.com/600x400?text=Demo+2",
-          stock: 3,
-        },
-      ];
-    }
-
-    // Cargar métodos de crédito desde ?creditPlatforms=
-    function initPaymentOptions() {
-      const params = new URLSearchParams(window.location.search);
-      const platformsParam = params.get("creditPlatforms");
-
-      const extraMethods = [];
-
-      if (platformsParam) {
-        let arr = null;
-        try {
-          arr = JSON.parse(platformsParam);
-        } catch {
-          arr = platformsParam.split(",").map(x => x.trim()).filter(Boolean);
-        }
-
-        if (Array.isArray(arr)) {
-          arr.forEach(code => {
-            const key = String(code).toLowerCase();
-            if (creditDefinitions[key]) {
-              extraMethods.push(creditDefinitions[key]);
-            }
-          });
-        }
-      }
-
-      paymentOptionsContainer.innerHTML = "";
-
-      function createPaymentItem(def) {
-        const wrapper = document.createElement("label");
-        wrapper.className = "payment-item";
-
-        const input = document.createElement("input");
-        input.type = "radio";
-        input.name = "paymentMethod";
-        input.value = def.value;
-
-        const textDiv = document.createElement("div");
-        const main = document.createElement("div");
-        main.className = "payment-label-main";
-        main.textContent = def.main;
-        const sub = document.createElement("div");
-        sub.className = "payment-label-sub";
-        sub.textContent = def.sub;
-
-        textDiv.appendChild(main);
-        textDiv.appendChild(sub);
-
-        wrapper.appendChild(input);
-        wrapper.appendChild(textDiv);
-        paymentOptionsContainer.appendChild(wrapper);
-      }
-
-      // Siempre transferencia
-      createPaymentItem({
-        value: "transferencia",
-        main: "Pago por QR",
-        sub: "Te enviaremos un QR para el deposito."
-      });
-
-      createPaymentItem({
-       value: "efectivo",
-        main: "Pago en efectivo",
-         sub: "Pagarás en efectivo al momento de la entrega."
-          });
-//--------------CODIGO PROMOCION PARA IMPLEMENTAR--------------
-          createCodigoPromocion();
-
-      // Créditos adicionales según parámetro
-      extraMethods.forEach(def => createPaymentItem(def));
-
-      // Actualizar selectedPaymentMethod cuando el usuario cambia radio
-      paymentOptionsContainer.addEventListener("change", (e) => {
-        if (e.target && e.target.name === "paymentMethod") {
-          selectedPaymentMethod = e.target.value;
-        }
-      });
-    }
-    // CODIGO DE PROMOCION  VISUALMENTE 
-    function createCodigoPromocion() {
-  const container = document.getElementById("paymentOptions");
-
-  const div = document.createElement("div");
-  div.id = "codigoPromocion";
-  div.style.marginTop = "10px";
-  div.style.padding = "12px";
-  div.style.border = "1px solid #d8dce3";
-  div.style.borderRadius = "12px";
-  div.style.background = "#ffffff";
-
-  div.innerHTML = `
-    <div style="font-weight:600; margin-bottom:8px;">Código de promoción</div>
-
-    <div style="display:flex; gap:8px; align-items:center;">
-      <select id="promoTipo"
-        style="width:90px; min-width:90px; padding:10px; border-radius:8px; border:1px solid #ccc;">
-        <option value="PP">PP</option>
-        <option value="C">C</option>
-        <option value="IM">IM</option>
-      </select>
-
-      <input id="promoCodigo" type="text" placeholder="Coloca tu codigo de promocion"
-        style="flex:1; min-width:0; padding:10px; border-radius:8px; border:1px solid #ccc;">
-    </div>
-  `;
-
-  container.appendChild(div);
-}
-
-    function renderProducts() {
-      productsContainer.innerHTML = "";
-
-      products.forEach((p) => {
-        const card = document.createElement("div");
-        card.className = "product-card";
-        card.dataset.id = p.id;
-
-        const qty = cart[p.id] || 0;
-        const subtotalText = qty
-          ? `${qty} u. • Bs. ${(qty * p.price).toFixed(2)}`
-          : "Sin seleccionar";
-
-        card.innerHTML = `
-          <div class="product-clickable">
-            <div class="product-image-wrapper">
-              <img src="${p.image}" alt="${p.name}">
-            </div>
-            <div class="product-body">
-              <div class="product-name">${p.name}</div>
-              <div class="product-description">${p.description}</div>
-              <div class="product-price-stock">
-                <span class="price">Bs. ${p.price.toFixed(2)}</span>
-                <span class="stock ${p.stock <= 3 ? "stock-low" : "stock-ok"}">
-                  Stock: ${p.stock}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div class="product-footer">
-            <div class="qty-wrapper" data-id="${p.id}">
-              <button class="qty-btn" data-action="dec">−</button>
-              <input
-                type="number"
-                class="qty-input"
-                value="${qty}"
-                min="0"
-                max="${p.stock}"
-                inputmode="numeric"
-              />
-              <button class="qty-btn" data-action="inc">+</button>
-            </div>
-            <div class="cart-pill" id="pill-${p.id}">
-              ${subtotalText}
-            </div>
-          </div>
-        `;
-
-        productsContainer.appendChild(card);
-      });
-
-      attachCardListeners();
-      attachQtyListeners();
-    }
-
-    function attachCardListeners() {
-      productsContainer.querySelectorAll(".product-card").forEach((card) => {
-        const id = Number(card.dataset.id);
-        const clickable = card.querySelector(".product-clickable");
-        clickable.addEventListener("click", () => openProductModal(id));
-      });
-    }
-
-    function attachQtyListeners() {
-      productsContainer.querySelectorAll(".qty-wrapper").forEach((wrapper) => {
-        const id = Number(wrapper.getAttribute("data-id"));
-        const decBtn = wrapper.querySelector('[data-action="dec"]');
-        const incBtn = wrapper.querySelector('[data-action="inc"]');
-        const input = wrapper.querySelector(".qty-input");
-
-        [decBtn, incBtn, input].forEach((el) => {
-          el.addEventListener("click", (e) => e.stopPropagation());
-        });
-
-        incBtn.addEventListener("click", () => {
-          const product = products.find((x) => x.id === id);
-          let current = Number(input.value) || 0;
-          if (current < product.stock) {
-            current += 1;
-            input.value = current;
-            setQty(id, current, true);
-          }
-        });
-
-        decBtn.addEventListener("click", () => {
-          let current = Number(input.value) || 0;
-          if (current > 0) {
-            current -= 1;
-            input.value = current;
-            setQty(id, current, true);
-          }
-        });
-
-        input.addEventListener("change", () => {
-          const product = products.find((x) => x.id === id);
-          let value = parseInt(input.value, 10);
-          if (isNaN(value) || value < 0) value = 0;
-          if (value > product.stock) value = product.stock;
-          input.value = value;
-          setQty(id, value, true);
-        });
-      });
-    }
-
-    function setQty(productId, qty, updateModal = false) {
-      const product = products.find((x) => x.id === productId);
-      if (!product) return;
-
-      if (qty <= 0) {
-        delete cart[productId];
-      } else {
-        cart[productId] = qty;
-      }
-
-      updatePill(productId);
-      updateCartSummary();
-
-      if (updateModal && currentModalProductId === productId) {
-        modalQtyInput.value = cart[productId] || 0;
-        updateModalSubtotal();
-      }
-    }
-
-    function updatePill(productId) {
-      const pill = document.getElementById("pill-" + productId);
-      const qty = cart[productId] || 0;
-      const product = products.find((x) => x.id === productId);
-      if (!pill || !product) return;
-
-      if (qty === 0) {
-        pill.textContent = "Sin seleccionar";
-      } else {
-        const subtotal = product.price * qty;
-        pill.textContent = `${qty} u. • Bs. ${subtotal.toFixed(2)}`;
-      }
-    }
-
-    function updateCartSummary() {
-      const { totalItems, totalAmount } = getCartTotals();
-
-      if (totalItems === 0) {
-        cartInfo.textContent = "Bs. 0.00 (0 prod.)";
-        cartInfo.classList.add("badge-empty");
-      } else {
-        cartInfo.textContent = `Bs. ${totalAmount.toFixed(2)} (${totalItems} prod.)`;
-        cartInfo.classList.remove("badge-empty");
-      }
-
-      updateMainButton();
-    }
-
-    function openProductModal(productId) {
-      const product = products.find((x) => x.id === productId);
-      if (!product) return;
-
-      currentModalProductId = productId;
-
-      modalTitle.textContent = product.name;
-      modalImage.src = product.image;
-      modalImage.alt = product.name;
-      modalDescription.textContent = product.description;
-      modalPrice.textContent = `Bs. ${product.price.toFixed(2)}`;
-      modalStock.textContent = `Stock: ${product.stock}`;
-      modalStock.className =
-        "stock " + (product.stock <= 3 ? "stock-low" : "stock-ok");
-
-      const currentQty = cart[productId] || 0;
-      modalQtyInput.max = String(product.stock);
-      modalQtyInput.value = currentQty;
-      updateModalSubtotal();
-      productModal.classList.add("show");
-    }
-
-    function closeProductModal() {
-      productModal.classList.remove("show");
-      currentModalProductId = null;
-    }
-
-    function updateModalSubtotal() {
-      if (currentModalProductId == null) return;
-      const product = products.find((x) => x.id === currentModalProductId);
-      if (!product) return;
-
-      let qty = Number(modalQtyInput.value) || 0;
-      if (qty < 0) qty = 0;
-      if (qty > product.stock) qty = product.stock;
-      modalQtyInput.value = qty;
-
-      const subtotal = qty * product.price;
-      modalSubtotal.textContent = `Subtotal: Bs. ${subtotal.toFixed(2)}`;
-    }
-
-    modalClose.addEventListener("click", closeProductModal);
-    productModal.addEventListener("click", (e) => {
-      if (e.target === productModal) {
-        closeProductModal();
-      }
-    });
-
-    modalQtyWrapper.querySelectorAll(".qty-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        if (currentModalProductId == null) return;
-        const product = products.find((x) => x.id === currentModalProductId);
-        if (!product) return;
-
-        let qty = Number(modalQtyInput.value) || 0;
-        const action = btn.getAttribute("data-action");
-
-        if (action === "inc" && qty < product.stock) qty += 1;
-        if (action === "dec" && qty > 0) qty -= 1;
-
-        modalQtyInput.value = qty;
-        updateModalSubtotal();
-        setQty(currentModalProductId, qty);
-        syncCardQty(currentModalProductId, qty);
-      });
-    });
-
-    modalQtyInput.addEventListener("change", () => {
-      if (currentModalProductId == null) return;
-      const product = products.find((x) => x.id === currentModalProductId);
-      if (!product) return;
-
-      let qty = parseInt(modalQtyInput.value, 10);
-      if (isNaN(qty) || qty < 0) qty = 0;
-      if (qty > product.stock) qty = product.stock;
-
-      modalQtyInput.value = qty;
-      updateModalSubtotal();
-      setQty(currentModalProductId, qty);
-      syncCardQty(currentModalProductId, qty);
-    });
-
-    function syncCardQty(productId, qty) {
-      const wrapper = productsContainer.querySelector(
-        `.qty-wrapper[data-id="${productId}"]`
-      );
-      if (!wrapper) return;
-      const input = wrapper.querySelector(".qty-input");
-      if (input) {
-        input.value = qty;
-      }
-    }
-
-    // Botón de geolocalización
-    btnUseLocation.addEventListener("click", () => {
-      if (!navigator.geolocation) {
-        locationStatus.textContent = "Tu dispositivo no soporta geolocalización.";
-        return;
-      }
-
-      locationStatus.textContent = "Obteniendo ubicación...";
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          setUserLocation(lat, lng, "geoloc");
-        },
-        (err) => {
-          console.warn("Error geolocalización:", err);
-          locationStatus.textContent =
-            "No se pudo obtener tu ubicación. Puedes seleccionarla tocando el mapa o habilitar permisos.";
-        }
-      );
-    });
-
-    // Resumen del paso 4
-    function actualizarResumenPaso4() {
-      const { totalItems, totalAmount } = getCartTotals();
-
-      finalItemsList.innerHTML = "";
-      Object.keys(cart).forEach(idStr => {
-        const id = Number(idStr);
-        const product = products.find(p => p.id === id);
-        if (!product) return;
-        const qty = cart[id];
-        const subtotal = qty * product.price;
-
-        const row = document.createElement("div");
-        row.className = "item-row";
-        row.innerHTML = `
-          <div class="item-row-primary">
-            <span>${product.name}</span>
-            <span>Bs. ${subtotal.toFixed(2)}</span>
-          </div>
-          <div class="item-row-secondary">
-            <span>Cantidad: ${qty}</span>
-            <span>Bs. ${product.price.toFixed(2)} c/u</span>
-          </div>
-        `;
-        finalItemsList.appendChild(row);
-      });
-
-      finalItemsCount.textContent = totalItems;
-      finalTotalAmount.textContent = `Bs. ${totalAmount.toFixed(2)}`;
-
-      const phone = deliveryPhoneInput.value.trim();
-      finalPhone.textContent = phone || "-";
-
-      const ref = deliveryReferenceInput.value.trim();
-      finalRef.textContent = ref || "-";
-
-      if (deliveryLat != null && deliveryLng != null) {
-        finalLocation.textContent =
-          `${deliveryLat.toFixed(5)}, ${deliveryLng.toFixed(5)}`;
-      } else {
-        finalLocation.textContent = "Sin ubicación precisa";
-      }
-
-     const promoTipo = document.getElementById("promoTipo")?.value || "";
-const promoCodigo = document.getElementById("promoCodigo")?.value || "";
-const codigoPromocional = `${promoTipo} ${promoCodigo}`.trim();
-
-finalPaymentMethod.textContent = getPaymentLabel(selectedPaymentMethod);
-finalPromoCodigo.textContent = codigoPromocional || "-";
-finalPaymentDetail.textContent = getPaymentDetail(selectedPaymentMethod);
-    }
-
-    // Navegación manual por los botones de pasos
-    stepsNavButtons.forEach(btn => {
-      btn.addEventListener("click", () => {
-        const step = Number(btn.dataset.step);
-        goToStep(step);
-      });
-    });
-
-    // Manejo del botón principal de Telegram (multi-paso)
-    if (tg) {
-      tg.onEvent("mainButtonClicked", () => {
-        const { totalItems, totalAmount } = getCartTotals();
-
-        if (currentStep === 1) {
-          if (totalItems === 0) {
-            alert("Selecciona al menos un producto antes de continuar.");
-            return;
-          }
-          goToStep(2);
-        } else if (currentStep === 2) {
-          const ref = deliveryReferenceInput.value.trim();
-          const phone = deliveryPhoneInput.value.trim();
-
-          if (!ref) {
-            alert("Por favor ingresa una referencia de entrega.");
-            return;
-          }
-          if (!phone) {
-            alert("Por favor ingresa tu número de teléfono.");
-            return;
-          }
-          if (deliveryLat == null || deliveryLng == null) {
-            alert("Por favor selecciona tu ubicación precisa tocando el mapa o usando el botón 'Usar mi ubicación actual'.");
-            return;
-          }
-
-          goToStep(3);
-        } else if (currentStep === 3) {
-          if (!selectedPaymentMethod) {
-            const selected = document.querySelector('input[name="paymentMethod"]:checked');
-            if (!selected) {
-              alert("Por favor selecciona un método de pago.");
-              return;
-            }
-            selectedPaymentMethod = selected.value;
-          }
-          goToStep(4);
-        } else if (currentStep === 4) {
-          // Validaciones extra por si el usuario se saltó pasos con la nav
-          if (totalItems === 0) {
-            alert("Tu carrito está vacío.");
-            goToStep(1);
-            return;
-          }
-
-          const ref = deliveryReferenceInput.value.trim();
-          const phone = deliveryPhoneInput.value.trim();
-          if (!ref) {
-            alert("Falta la referencia de entrega. Complétala en el paso 2.");
-            goToStep(2);
-            return;
-          }
-          if (!phone) {
-            alert("Falta el número de teléfono. Complétalo en el paso 2.");
-            goToStep(2);
-            return;
-          }
-          if (deliveryLat == null || deliveryLng == null) {
-            alert("Falta la ubicación precisa. Complétala en el paso 2.");
-            goToStep(2);
-            return;
-          }
-          if (!selectedPaymentMethod) {
-            alert("Falta seleccionar el método de pago. Hazlo en el paso 3.");
-            goToStep(3);
-            return;
-          }
-
-          const items = Object.keys(cart).map((idStr) => {
-            const id = Number(idStr);
-            const product = products.find((x) => x.id === id);
-            return {
-              id: product.id,
-              name: product.name,
-              price: product.price,
-              qty: cart[id],
-              subtotal: product.price * cart[id],
-            };
-          });
-
-          const payload = {
-            event: "order_submitted",
-            total_items: totalItems,
-            total_amount: totalAmount,
-            items,
-            delivery: {
-              lat: deliveryLat,
-              lng: deliveryLng,
-              reference: ref,
-              phone: phone,
-            },
-            payment_method: selectedPaymentMethod,
-            timestamp: Date.now(),
-          };
-
-          tg.sendData(JSON.stringify(payload)); // la miniapp se cierra al enviar
-        }
-      });
-    }
-
-    // Init
-    initProducts();
-    initPaymentOptions();
-    renderProducts();
-    updateCartSummary();
-    updateStepsNav();
-    updateMainButton();
-    initMap();
-  </script>
+function refreshButtons(){productNodes().forEach(function(card){var id=card.dataset.id,q=state.cart[id]||0,box=card.querySelector('.buyBox');box.innerHTML=q?'<div class="qty"><button type="button" onclick="addQty('+id+',-1)">−</button><span>'+q+'</span><button type="button" onclick="addQty('+id+',1)">+</button></div>':'<button type="button" class="add" onclick="addQty('+id+',1)">+</button>'});enableMobileControls()}
+function filterProducts(){var q=(el('search').value||'').toLowerCase();var count=0;productNodes().forEach(function(card){var ok=(state.cat==='TODOS'||card.dataset.cat===state.cat)&&(!q||card.dataset.name.toLowerCase().indexOf(q)>-1||card.dataset.cat.toLowerCase().indexOf(q)>-1||card.dataset.desc.toLowerCase().indexOf(q)>-1);card.style.display=ok?'block':'none';if(ok)count++});var empty=el('emptyProducts');if(!empty){empty=document.createElement('div');empty.id='emptyProducts';empty.className='empty';empty.textContent='No hay productos en esta categoría.';el('products').appendChild(empty)}empty.style.display=count?'none':'block'}
+function selectCat(cat){state.cat=cat;document.querySelectorAll('.cat').forEach(function(c){c.classList.toggle('active',c.dataset.cat===cat)});filterProducts()}
+function addQty(id,d){var card=document.querySelector('.product[data-id="'+id+'"]');var stock=Number(card.dataset.stock||99);var q=(state.cart[id]||0)+d;if(q<0)q=0;if(q>stock)q=stock;state.cart[id]=q;refreshButtons();updateBottom()}
+function checkCode(){var c=(el('code').value||'').trim().toUpperCase();state.code=c;state.promo=false;state.platformCode=false;if(!c){el('codeStatus').className='hint';el('codeStatus').textContent='Sin código. Puedes continuar con la compra.'}else if(c==='LAKOLLITA'){state.promo=true;el('codeStatus').className='hint ok';el('codeStatus').textContent='Código promocional aplicado: descuento Bs. 5.00.'}else if(/^C-\d+$/.test(c)){state.platformCode=true;state.payment='qr';el('codeStatus').className='hint ok';el('codeStatus').textContent='Código promocional válido. Se habilitó pago por QR.'}else{el('codeStatus').className='hint';el('codeStatus').textContent='Código ingresado. Se validará al continuar.'}el('promoToggleText').textContent=c?'Código: '+c:'Código promocional';updateBottom()}
+function goStep(n){if(validateTo(n)){state.step=n;renderStep()}}
+function renderStep(){document.querySelectorAll('.screen').forEach(function(s,i){s.classList.toggle('active',i+1===state.step)});updateSteps();updateBottom();if(state.step===2){setDelivery(state.delivery);setTimeout(function(){renderMap();setupMapDrag()},80)}if(state.step===3)renderSummary();if(state.step===4)renderPayment();if(state.step===5)renderSuccess();if(state.step===6)renderReceipt();window.scrollTo({top:0,behavior:'smooth'})}
+function validateTo(n){if(n>1&&items().length===0){alert('Selecciona al menos un producto.');return false}if(n>3&&state.delivery==='delivery'){if(!el('address').value.trim()||!el('phone').value.trim()){alert('Completa dirección y teléfono.');return false}if(state.lat===null){alert('Selecciona la ubicación en el mapa.');return false}}return true}
+function setDelivery(v){state.delivery=v;document.querySelectorAll('input[name=delivery]').forEach(function(r){r.checked=(r.value===v);r.closest('.choice').classList.toggle('selected',r.checked)});el('deliveryData').classList.toggle('hide',v!=='delivery');el('pickupData').classList.toggle('hide',v!=='pickup');el('locationLabel').textContent=v==='delivery'?(el('address').value||'Santa Cruz de la Sierra'):'TIGER BET - Punto Central'}
+function useLocation(){if(!navigator.geolocation){alert('Tu navegador no permite ubicación. Usa punto manual.');return}navigator.geolocation.getCurrentPosition(function(pos){setLoc(pos.coords.latitude,pos.coords.longitude,'Ubicación actual detectada')},function(){alert('No se pudo obtener ubicación. Usa punto manual.')},{enableHighAccuracy:true,timeout:10000,maximumAge:0})}
+var manualPick=false,mapCenter={lat:-17.79302,lng:-63.15377},mapZoom=16,mapDragBound=false,mapDown=false,mapMoved=false,suppressNextPick=false,dragStart={x:0,y:0,cx:0,cy:0};
+function lon2px(lon,z){return (lon+180)/360*Math.pow(2,z)*256}function lat2px(lat,z){var r=lat*Math.PI/180;return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*Math.pow(2,z)*256}function px2lon(x,z){return x/(256*Math.pow(2,z))*360-180}function px2lat(y,z){var n=Math.PI-2*Math.PI*y/(256*Math.pow(2,z));return 180/Math.PI*Math.atan(.5*(Math.exp(n)-Math.exp(-n)))}
+function renderMap(){var box=el('tileMap');if(!box)return;var old=box.querySelectorAll('img');for(var i=0;i<old.length;i++)old[i].remove();var w=box.clientWidth||320,h=box.clientHeight||235,z=mapZoom,cx=lon2px(mapCenter.lng,z),cy=lat2px(mapCenter.lat,z);var sx=Math.floor((cx-w/2)/256)-1,ex=Math.floor((cx+w/2)/256)+1,sy=Math.floor((cy-h/2)/256)-1,ey=Math.floor((cy+h/2)/256)+1;for(var x=sx;x<=ex;x++){for(var y=sy;y<=ey;y++){var im=document.createElement('img');im.src='https://tile.openstreetmap.org/'+z+'/'+x+'/'+y+'.png';im.alt='';im.style.left=(x*256-cx+w/2)+'px';im.style.top=(y*256-cy+h/2)+'px';box.insertBefore(im,box.firstChild)}}var pin=el('mapPin');if(state.lat!==null){pin.style.display='block';pin.style.left=(lon2px(state.lng,z)-cx+w/2)+'px';pin.style.top=(lat2px(state.lat,z)-cy+h/2)+'px'}else pin.style.display='none';el('mapHint').textContent=manualPick?'Arrastra el mapa para buscar y toca el punto exacto.':'Arrastra el mapa. Presiona “Punto manual” y toca el punto exacto.'}
+function manualLocation(){manualPick=true;el('locStatus').className='hint';el('locStatus').textContent='Modo manual activo: arrastra el mapa para buscar y toca el punto exacto.';renderMap();setupMapDrag()}
+function pickMapPoint(ev){if(!manualPick||suppressNextPick)return;var r=el('tileMap').getBoundingClientRect(),x=ev.clientX-r.left,y=ev.clientY-r.top,z=mapZoom,cx=lon2px(mapCenter.lng,z),cy=lat2px(mapCenter.lat,z);manualPick=false;setLoc(px2lat(cy+(y-r.height/2),z),px2lon(cx+(x-r.width/2),z),'Punto manual seleccionado')}
+function setupMapDrag(){var box=el('tileMap');if(!box||mapDragBound)return;mapDragBound=true;box.addEventListener('pointerdown',function(ev){mapDown=true;mapMoved=false;suppressNextPick=false;dragStart={x:ev.clientX,y:ev.clientY,cx:lon2px(mapCenter.lng,mapZoom),cy:lat2px(mapCenter.lat,mapZoom)};try{box.setPointerCapture(ev.pointerId)}catch(e){}ev.preventDefault()});box.addEventListener('pointermove',function(ev){if(!mapDown)return;var dx=ev.clientX-dragStart.x,dy=ev.clientY-dragStart.y;if(Math.abs(dx)>3||Math.abs(dy)>3)mapMoved=true;if(mapMoved){mapCenter={lat:px2lat(dragStart.cy-dy,mapZoom),lng:px2lon(dragStart.cx-dx,mapZoom)};renderMap()}ev.preventDefault()});function up(ev){if(!mapDown)return;mapDown=false;if(mapMoved){suppressNextPick=true;setTimeout(function(){suppressNextPick=false},250)}try{box.releasePointerCapture(ev.pointerId)}catch(e){}}box.addEventListener('pointerup',up);box.addEventListener('pointercancel',up);box.addEventListener('pointerleave',up)}
+function setLoc(lat,lng,msg){state.lat=Number(lat);state.lng=Number(lng);mapCenter={lat:state.lat,lng:state.lng};el('locStatus').className='hint ok';el('locStatus').textContent=msg+': '+state.lat.toFixed(5)+', '+state.lng.toFixed(5);renderMap()}
+function renderSummary(){var t=totals(),h=items().map(function(i){return '<div class="listLine"><span><b>'+esc(i.name)+'</b> <span class="muted">x'+i.qty+'</span><br><span class="muted">'+esc(i.cat)+'</span></span><b>'+money(i.subtotal)+'</b></div>'}).join('');h+='<div class="listLine"><span>Subtotal</span><b>'+money(t.subtotal)+'</b></div>';if(t.discount)h+='<div class="listLine"><span>Descuento</span><b class="ok">- '+money(t.discount)+'</b></div>';h+='<div class="listLine"><span>Operación</span><b>'+opLabel()+'</b></div><div class="listLine"><span>Entrega</span><b>'+(state.delivery==='delivery'?'Delivery':'Recoger en tienda')+'</b></div>';h+=state.delivery==='delivery'?'<div class="hint">Dirección: '+esc(el('address').value)+'<br>Referencia: '+esc(el('reference').value||'Sin referencia')+'<br>Tel: '+esc(el('phone').value)+'<br>Mapa: '+mapLink()+'</div>':'<div class="hint">TIGER BET - Punto Central<br>Av. Principal #123, Santa Cruz</div>';h+='<div class="listLine"><span><b>Total a pagar</b></span><b class="totalText">'+money(t.total)+'</b></div>';el('summary').innerHTML=h}
+function renderPayment(){var opts=state.platformCode?[['qr','▦','Pago por QR','Escanea o genera un QR para pagar.']]:[['qr','▦','Pago por QR','Escanea o genera un QR para pagar.'],['cash','💵','Efectivo','Paga al recibir el pedido.'],['points','⭐','Puntos','Usa puntos acumulados.'],['tickets','🎟️','Tickets','Usa tickets disponibles.']];if(state.platformCode)state.payment='qr';el('payOptions').innerHTML=opts.map(function(m){return '<label class="choice '+(state.payment===m[0]?'selected':'')+'"><input type="radio" name="pay" value="'+m[0]+'" '+(state.payment===m[0]?'checked':'')+' onchange="setPay(this.value)"><div><b>'+m[2]+'</b><small>'+m[3]+'</small></div><div class="choiceIcon">'+m[1]+'</div></label>'}).join('')}
+function setPay(v){state.payment=v;renderPayment()}function payName(){return state.payment==='qr'?'Pago por QR':state.payment==='cash'?'Efectivo':state.payment==='points'?'Puntos':'Tickets'}function mapLink(){return state.lat===null?'Sin mapa':'<a target="_blank" href="https://maps.google.com/?q='+state.lat+','+state.lng+'">Ver ubicación</a>'}
+function renderSuccess(){var t=totals();el('successInfo').innerHTML='<div class="listLine"><span>Tipo de operación</span><b>'+opLabel()+'</b></div><div class="listLine"><span>Método de pago</span><b>'+payName()+'</b></div><div class="listLine"><span>Total pagado</span><b class="ok">'+money(t.total)+'</b></div>'+(state.delivery==='delivery'?'<div class="alert" style="margin-top:10px">Pedido registrado. Se enviará solicitud a los deliverys disponibles. El primero que acepte quedará asignado.</div>':'')}
+function renderReceipt(){var t=totals(),a=items();var h='<div class="listLine"><span>Fecha</span><span>'+new Date().toLocaleDateString()+'</span></div><div class="listLine"><span>Hora</span><span>'+new Date().toLocaleTimeString()+'</span></div><div class="listLine"><span>Operación</span><b>'+opLabel()+'</b></div><table><thead><tr><th>Producto</th><th>Cant.</th><th>Total</th></tr></thead><tbody>'+a.map(function(i){return '<tr><td>'+esc(i.name)+'</td><td>'+i.qty+'</td><td>'+money(i.subtotal)+'</td></tr>'}).join('')+'</tbody></table><div class="listLine"><span>Subtotal</span><b>'+money(t.subtotal)+'</b></div>'+(t.discount?'<div class="listLine"><span>Descuento</span><b class="ok">- '+money(t.discount)+'</b></div>':'')+'<div class="listLine"><span><b>TOTAL PAGADO</b></span><b>'+money(t.total)+'</b></div><div class="hint">Entrega: '+(state.delivery==='delivery'?'Delivery a domicilio':'Recoger en tienda')+'<br>';h+=state.delivery==='delivery'?'Dirección: '+esc(el('address').value)+'<br>Referencia: '+esc(el('reference').value||'Sin referencia')+'<br>Teléfono: '+esc(el('phone').value)+'<br>Mapa: '+mapLink():'Tienda: TIGER BET - Punto Central<br>Dirección: Av. Principal #123, Santa Cruz';h+='</div><div style="text-align:center;margin-top:14px" class="hint">Gracias por tu compra<br>¡Te esperamos!<br>Este comprobante no es factura.</div>';el('receipt').innerHTML=h;sendPayload()}
+function payload(){var t=totals();return {miniapp:'tienda',tipoOperacion:opLabel(),codigoPromocional:state.code,esCodigoPlataforma:state.platformCode,productos:items(),subtotal:t.subtotal,descuento:t.discount,total:t.total,metodoPago:state.payment,entrega:state.delivery,direccion:el('address')?el('address').value:'',referencia:el('reference')?el('reference').value:'',telefono:el('phone')?el('phone').value:'',lat:state.lat,lng:state.lng,mapa:state.lat!==null?'https://maps.google.com/?q='+state.lat+','+state.lng:'',enviarDeliveryTelegram:state.delivery==='delivery',bloquearAlAceptar:true}}
+function sendPayload(){try{console.log('TIENDA_PAYLOAD',payload())}catch(e){}try{if(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.sendData)window.Telegram.WebApp.sendData(JSON.stringify(payload()))}catch(e){}}
+function nextStep(){if(state.step<6){if(validateTo(state.step+1)){state.step++;renderStep()}}else alert('Comprobante generado.')}
+function showCartInfo(){alert('Productos seleccionados: '+items().length+'\nTotal: '+money(totals().total))}
+try{if(window.Telegram&&window.Telegram.WebApp){window.Telegram.WebApp.ready();if(window.Telegram.WebApp.expand)window.Telegram.WebApp.expand()}}catch(e){}
+enableMobileControls();refreshButtons();filterProducts();updateSteps();updateBottom();
+</script>
 </body>
 </html>
