@@ -174,10 +174,41 @@ function renderSummary(){var t=totals(),h=items().map(function(i){return '<div c
 function renderPayment(){var opts=state.platformCode?[['qr','▦','Pago por QR','Escanea o genera un QR para pagar.']]:[['qr','▦','Pago por QR','Escanea o genera un QR para pagar.'],['cash','💵','Efectivo','Paga al recibir el pedido.'],['points','⭐','Puntos','Usa puntos acumulados.'],['tickets','🎟️','Tickets','Usa tickets disponibles.']];if(state.platformCode)state.payment='qr';el('payOptions').innerHTML=opts.map(function(m){return '<label class="choice '+(state.payment===m[0]?'selected':'')+'"><input type="radio" name="pay" value="'+m[0]+'" '+(state.payment===m[0]?'checked':'')+' onchange="setPay(this.value)"><div><b>'+m[2]+'</b><small>'+m[3]+'</small></div><div class="choiceIcon">'+m[1]+'</div></label>'}).join('')}
 function setPay(v){state.payment=v;renderPayment()}function payName(){return state.payment==='qr'?'Pago por QR':state.payment==='cash'?'Efectivo':state.payment==='points'?'Puntos':'Tickets'}function mapLink(){return state.lat===null?'Sin mapa':'<a target="_blank" href="https://maps.google.com/?q='+state.lat+','+state.lng+'">Ver ubicación</a>'}
 function renderSuccess(){var t=totals();el('successInfo').innerHTML='<div class="listLine"><span>Tipo de operación</span><b>'+opLabel()+'</b></div><div class="listLine"><span>Método de pago</span><b>'+payName()+'</b></div><div class="listLine"><span>Total pagado</span><b class="ok">'+money(t.total)+'</b></div>'+(state.delivery==='delivery'?'<div class="alert" style="margin-top:10px">Pedido registrado. Se enviará solicitud a los deliverys disponibles. El primero que acepte quedará asignado.</div>':'')}
-function renderReceipt(){var t=totals(),a=items();var h='<div class="listLine"><span>Fecha</span><span>'+new Date().toLocaleDateString()+'</span></div><div class="listLine"><span>Hora</span><span>'+new Date().toLocaleTimeString()+'</span></div><div class="listLine"><span>Operación</span><b>'+opLabel()+'</b></div><table><thead><tr><th>Producto</th><th>Cant.</th><th>Total</th></tr></thead><tbody>'+a.map(function(i){return '<tr><td>'+esc(i.name)+'</td><td>'+i.qty+'</td><td>'+money(i.subtotal)+'</td></tr>'}).join('')+'</tbody></table><div class="listLine"><span>Subtotal</span><b>'+money(t.subtotal)+'</b></div>'+(t.discount?'<div class="listLine"><span>Descuento</span><b class="ok">- '+money(t.discount)+'</b></div>':'')+'<div class="listLine"><span><b>TOTAL PAGADO</b></span><b>'+money(t.total)+'</b></div><div class="hint">Entrega: '+(state.delivery==='delivery'?'Delivery a domicilio':'Recoger en tienda')+'<br>';h+=state.delivery==='delivery'?'Dirección: '+esc(el('address').value)+'<br>Referencia: '+esc(el('reference').value||'Sin referencia')+'<br>Teléfono: '+esc(el('phone').value)+'<br>Mapa: '+mapLink():'Tienda: TIGER BET - Punto Central<br>Dirección: Av. Principal #123, Santa Cruz';h+='</div><div style="text-align:center;margin-top:14px" class="hint">Gracias por tu compra<br>¡Te esperamos!<br>Este comprobante no es factura.</div>';el('receipt').innerHTML=h;sendPayload()}
+function renderReceipt(){var t=totals(),a=items();var h='<div class="listLine"><span>Fecha</span><span>'+new Date().toLocaleDateString()+'</span></div><div class="listLine"><span>Hora</span><span>'+new Date().toLocaleTimeString()+'</span></div><div class="listLine"><span>Operación</span><b>'+opLabel()+'</b></div><table><thead><tr><th>Producto</th><th>Cant.</th><th>Total</th></tr></thead><tbody>'+a.map(function(i){return '<tr><td>'+esc(i.name)+'</td><td>'+i.qty+'</td><td>'+money(i.subtotal)+'</td></tr>'}).join('')+'</tbody></table><div class="listLine"><span>Subtotal</span><b>'+money(t.subtotal)+'</b></div>'+(t.discount?'<div class="listLine"><span>Descuento</span><b class="ok">- '+money(t.discount)+'</b></div>':'')+'<div class="listLine"><span><b>TOTAL PAGADO</b></span><b>'+money(t.total)+'</b></div><div class="hint">Entrega: '+(state.delivery==='delivery'?'Delivery a domicilio':'Recoger en tienda')+'<br>';h+=state.delivery==='delivery'?'Dirección: '+esc(el('address').value)+'<br>Referencia: '+esc(el('reference').value||'Sin referencia')+'<br>Teléfono: '+esc(el('phone').value)+'<br>Mapa: '+mapLink():'Tienda: TIGER BET - Punto Central<br>Dirección: Av. Principal #123, Santa Cruz';h+='</div><div style="text-align:center;margin-top:14px" class="hint">Gracias por tu compra<br>¡Te esperamos!<br>Este comprobante no es factura.</div>';el('receipt').innerHTML=h;}
 function payload(){var t=totals();return {miniapp:'tienda',tipoOperacion:opLabel(),codigoPromocional:state.code,esCodigoPlataforma:state.platformCode,productos:items(),subtotal:t.subtotal,descuento:t.discount,total:t.total,metodoPago:state.payment,entrega:state.delivery,direccion:el('address')?el('address').value:'',referencia:el('reference')?el('reference').value:'',telefono:el('phone')?el('phone').value:'',lat:state.lat,lng:state.lng,mapa:state.lat!==null?'https://maps.google.com/?q='+state.lat+','+state.lng:'',enviarDeliveryTelegram:state.delivery==='delivery',bloquearAlAceptar:true}}
-function sendPayload(){try{console.log('TIENDA_PAYLOAD',payload())}catch(e){}try{if(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.sendData)window.Telegram.WebApp.sendData(JSON.stringify(payload()))}catch(e){}}
-function nextStep(){if(state.step<6){if(validateTo(state.step+1)){state.step++;renderStep()}}else alert('Comprobante generado.')}
+function sendPayload(){
+  var data=payload();
+  try{console.log('TIENDA_PAYLOAD',data)}catch(e){}
+  if(!(window.Telegram&&window.Telegram.WebApp&&typeof window.Telegram.WebApp.sendData==='function')){
+    throw new Error('Telegram WebApp no esta disponible.');
+  }
+  window.Telegram.WebApp.sendData(JSON.stringify(data));
+}
+function nextStep(){
+  if(state.step===4){
+    if(!validateTo(4))return;
+    var btn=el('mainBtn');
+    btn.disabled=true;
+    btn.textContent='Procesando...';
+    try{
+      sendPayload();
+    }catch(e){
+      console.error('Error enviando compra:',e);
+      alert('No se pudo enviar la operacion al bot. Abre nuevamente la tienda desde Telegram e intenta otra vez.');
+      btn.disabled=false;
+      btn.textContent='Pagar';
+    }
+    return;
+  }
+  if(state.step<6){
+    if(validateTo(state.step+1)){
+      state.step++;
+      renderStep();
+    }
+  }else{
+    alert('Comprobante generado.');
+  }
+}
 function showCartInfo(){alert('Productos seleccionados: '+items().length+'\nTotal: '+money(totals().total))}
 try{if(window.Telegram&&window.Telegram.WebApp){window.Telegram.WebApp.ready();if(window.Telegram.WebApp.expand)window.Telegram.WebApp.expand()}}catch(e){}
 renderProductsFromUrl();enableMobileControls();updateSteps();updateBottom();
