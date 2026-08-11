@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Casa de Préstamos</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root{
+      --primary:#1f6fd6;
+      --primary-dark:#174f98;
+      --bg:#eef4fb;
+      --card:rgba(255,255,255,.95);
+      --text:#243447;
+      --border:#d9e3ef;
+      --accent:#3cb371;
+      --danger:#d84a4a;
+    }
+
+    *{box-sizing:border-box}
+
+    body{
+      font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+      margin:0;
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+      color:var(--text);
+      background:
+        linear-gradient(rgba(12, 29, 54, 0.45), rgba(12, 29, 54, 0.45)),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 1800'%3E%3Crect width='1200' height='1800' fill='%23244c7d'/%3E%3Cg opacity='0.16'%3E%3Ccircle cx='180' cy='220' r='95' fill='white'/%3E%3Ccircle cx='980' cy='260' r='120' fill='white'/%3E%3Ccircle cx='1030' cy='1180' r='110' fill='white'/%3E%3Ccircle cx='170' cy='1430' r='150' fill='white'/%3E%3C/g%3E%3Cg opacity='0.25'%3E%3Crect x='150' y='300' width='350' height='220' rx='20' fill='%2392b5dd'/%3E%3Crect x='180' y='345' width='290' height='22' rx='11' fill='white'/%3E%3Crect x='180' y='390' width='210' height='18' rx='9' fill='white'/%3E%3Crect x='180' y='430' width='250' height='18' rx='9' fill='white'/%3E%3Ccircle cx='430' cy='470' r='36' fill='%2349b675'/%3E%3Ctext x='418' y='481' font-family='Arial' font-size='38' fill='white'%24%3C/text%3E%3C/g%3E%3Cg opacity='0.24'%3E%3Crect x='670' y='980' width='370' height='240' rx='22' fill='%2392b5dd'/%3E%3Crect x='710' y='1030' width='220' height='20' rx='10' fill='white'/%3E%3Crect x='710' y='1070' width='170' height='18' rx='9' fill='white'/%3E%3Crect x='710' y='1108' width='230' height='18' rx='9' fill='white'/%3E%3Ccircle cx='970' cy='1148' r='42' fill='%23ffd166'/%3E%3Ctext x='958' y='1159' font-family='Arial' font-size='34' fill='%23244c7d'%25%3C/text%3E%3C/g%3E%3Cg opacity='0.18'%3E%3Crect x='240' y='980' width='260' height='160' rx='20' fill='white'/%3E%3Crect x='295' y='1045' width='150' height='16' rx='8' fill='%23244c7d'/%3E%3Crect x='295' y='1080' width='110' height='14' rx='7' fill='%23244c7d'/%3E%3Ccircle cx='330' cy='1030' r='22' fill='%2349b675'/%3E%3C/g%3E%3C/svg%3E");
+      background-size: cover;
+      background-position: center;
+      padding:20px;
+    }
+
+    .container{
+      width:100%;
+      max-width:480px;
+      background:var(--card);
+      padding:24px 20px;
+      border-radius:18px;
+      box-shadow:0 12px 32px rgba(0,0,0,.18);
+      backdrop-filter: blur(6px);
+      border:1px solid rgba(255,255,255,.45);
+    }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      background:#e8f1fd;
+      color:var(--primary-dark);
+      border:1px solid #cfe0f7;
+      padding:8px 12px;
+      border-radius:999px;
+      font-size:.88rem;
+      font-weight:700;
+      margin:0 auto 14px;
+    }
+
+    .top{
+      display:flex;
+      justify-content:center;
+    }
+
+    h2{
+      margin:0 0 8px;
+      text-align:center;
+      color:var(--primary);
+      font-size:1.65rem;
+    }
+
+    .subtitle{
+      text-align:center;
+      color:#5b6c7d;
+      font-size:.95rem;
+      margin:0 0 18px;
+    }
+
+    label{
+      display:block;
+      font-weight:700;
+      color:#2f3b48;
+      margin:14px 0 6px;
+    }
+
+    input{
+      width:100%;
+      padding:12px 14px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      font-size:16px;
+      outline:none;
+      background:#fff;
+      color:var(--text);
+    }
+
+    input:focus{
+      border-color:var(--primary);
+      box-shadow:0 0 0 3px rgba(31,111,214,.15);
+    }
+
+    .upper{text-transform:uppercase}
+
+    .range{
+      display:flex;
+      gap:10px;
+      font-size:.85rem;
+      color:#4b5a6a;
+      justify-content:space-between;
+      margin-top:8px;
+      background:#f5f8fc;
+      border:1px solid #e4edf7;
+      border-radius:12px;
+      padding:10px 12px;
+    }
+
+    .hint{
+      font-size:.83rem;
+      color:#6a7a8c;
+      margin-top:6px;
+    }
+
+    .row{
+      display:flex;
+      gap:10px;
+      margin-top:18px;
+    }
+
+    .btn{
+      width:100%;
+      padding:13px 14px;
+      border:0;
+      border-radius:12px;
+      background:linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color:#fff;
+      font-weight:700;
+      cursor:pointer;
+      box-shadow:0 8px 18px rgba(31,111,214,.24);
+    }
+
+    .btn:disabled{
+      opacity:.6;
+      cursor:not-allowed;
+      box-shadow:none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="top">
+      <div class="badge">💳 Solicitud rápida</div>
+    </div>
+
+    <h2>CASA DE PRESTAMOS</h2>
+    <p class="subtitle">Completa tus datos para solicitar tu préstamo</p>
+
+    <label for="codigoPromocional">Coloca tu número de trámite</label>
+    <input
+      id="codigoPromocional"
+      class="upper"
+      type="text"
+      placeholder="EJ: C123"
+      maxlength="32"
+      autocomplete="off"
+    />
+    <div class="hint">Ingresa el código o número de trámite asignado.</div>
+
+    <label for="monto">Monto</label>
+    <input
+      id="monto"
+      type="text"
+      inputmode="numeric"
+      placeholder="0"
+      autocomplete="off"
+    />
+
+    <div class="range">
+      <span>Mín: <strong id="minLabel">—</strong></span>
+      <span>Máx: <strong id="maxLabel">—</strong></span>
+    </div>
+
+    <div class="row">
+      <button id="btnSend" class="btn" disabled>Enviar solicitud</button>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    function getParams(){
+      const layers = [];
+
+      try { layers.push(new URLSearchParams(location.search)); } catch {}
+      try {
+        layers.push(
+          new URLSearchParams(
+            location.hash?.startsWith('#') ? location.hash.slice(1) : ''
+          )
+        );
+      } catch {}
+      try {
+        layers.push(
+          new URLSearchParams(
+            window.Telegram?.WebApp?.initDataUnsafe?.start_param || ''
+          )
+        );
+      } catch {}
+
+      const get = (key) => {
+        for (const qs of layers) {
+          const value = qs.get(key);
+          if (value !== null) return value;
+        }
+        return null;
+      };
+
+      return {
+        minRaw: get('montoMinimo') ?? get('montominimo'),
+        maxRaw: get('MontoMaximo') ?? get('montomaximo')
+      };
+    }
+
+    function parseIntAmount(value){
+      if (value == null) return NaN;
+      const clean = String(value).trim().replace(/\D/g, '');
+      if (clean === '') return NaN;
+      const number = parseInt(clean, 10);
+      return Number.isFinite(number) ? number : NaN;
+    }
+
+    const state = { min: NaN, max: NaN };
+
+    function updateRangeLabels(){
+      $('minLabel').textContent = Number.isNaN(state.min) ? '—' : state.min;
+      $('maxLabel').textContent = Number.isNaN(state.max) ? '—' : state.max;
+    }
+
+    function validate(){
+      const codigo = $('codigoPromocional').value.trim();
+      const monto = parseIntAmount($('monto').value);
+
+      let ok = true;
+
+      if (!/^[A-Z0-9-]+$/.test(codigo)) ok = false;
+      if (Number.isNaN(monto) || monto <= 0) ok = false;
+      if (!Number.isNaN(state.min) && monto < state.min) ok = false;
+      if (!Number.isNaN(state.max) && monto > state.max) ok = false;
+
+      $('btnSend').disabled = !ok;
+      return ok;
+    }
+
+    function buildPayload(){
+      return {
+        miniapp: 'prestamos',
+        codigoPromocional: $('codigoPromocional').value.trim(),
+        monto: parseIntAmount($('monto').value)
+      };
+    }
+
+    function showNotSupportedMessage(){
+      const container = document.querySelector('.container');
+      container.innerHTML = `
+        <h2 style="color:#d84a4a;text-align:center">No puedes usar esta MiniApp aquí</h2>
+        <p style="text-align:center;font-size:15px;color:#444">
+          Esta herramienta solo funciona dentro del <strong>Telegram oficial</strong>.<br><br>
+          Si estás usando <strong>Telegram X</strong> o un navegador normal,
+          ábrelo desde el Telegram oficial para continuar.
+        </p>
+      `;
+    }
+
+    function sendToTelegram(){
+      const payload = buildPayload();
+      const json = JSON.stringify(payload);
+
+      if (window.Telegram?.WebApp) {
+        const tg = Telegram.WebApp;
+        try {
+          tg.HapticFeedback?.impactOccurred?.('medium');
+          tg.sendData(json);
+          setTimeout(() => tg.close(), 150);
+        } catch (error) {
+          showNotSupportedMessage();
+        }
+      } else {
+        showNotSupportedMessage();
+      }
+    }
+
+    (function init(){
+      const { minRaw, maxRaw } = getParams();
+      state.min = parseIntAmount(minRaw);
+      state.max = parseIntAmount(maxRaw);
+      updateRangeLabels();
+
+      $('codigoPromocional').addEventListener('input', (event) => {
+        event.target.value = event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+        validate();
+      });
+
+      $('monto').addEventListener('input', (event) => {
+        event.target.value = event.target.value.replace(/\D/g, '');
+        validate();
+      });
+
+      $('btnSend').addEventListener('click', () => {
+        if (validate()) sendToTelegram();
+      });
+
+      validate();
+    })();
+  </script>
+</body>
+</html>
