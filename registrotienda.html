@@ -47,13 +47,20 @@
   <div class="container">
     <div id="formView">
       <h1>Registro Tienda</h1>
-      <p class="subtitle">Completa tu nombre para comenzar.</p>
+      <p class="subtitle">Completa tus datos para enviar tu solicitud de registro.</p>
 
       <div class="input-group">
         <label for="nombre">Nombre completo</label>
         <input id="nombre" type="text" placeholder="Ej. José Manuel Flores Mendoza" autocomplete="name" />
         <div class="helper">Escribe nombres y apellidos completos.</div>
         <div id="nombreMsg" class="error">Ingresa tu nombre completo. Usa solo letras y espacios.</div>
+      </div>
+
+      <div class="input-group">
+        <label for="telefono">Teléfono</label>
+        <input id="telefono" type="tel" placeholder="Ej. 71234567" inputmode="numeric" autocomplete="tel" />
+        <div class="helper">Ingresa tu número de teléfono.</div>
+        <div id="telefonoMsg" class="error">Ingresa un teléfono válido de al menos 8 dígitos.</div>
       </div>
 
       <div class="input-group">
@@ -82,7 +89,9 @@
 
   const nombre = document.getElementById('nombre');
   const username = document.getElementById('username');
+  const telefono = document.getElementById('telefono');
   const nombreMsg = document.getElementById('nombreMsg');
+  const telefonoMsg = document.getElementById('telefonoMsg');
   const usernameMsg = document.getElementById('usernameMsg');
   const registrarBtn = document.getElementById('registrarBtn');
   const formView = document.getElementById('formView');
@@ -106,27 +115,37 @@
     return /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' -]+$/.test(s);
   }
 
+  function telefonoValido(valor) {
+    const soloDigitos = (valor || '').replace(/\D/g, '');
+    return soloDigitos.length >= 8 && soloDigitos.length <= 15;
+  }
+
   function validar() {
     const okNombre = nombreValido(nombre.value);
+    const okTelefono = telefonoValido(telefono.value);
     const okUsername = usernameDetectado.length >= 5;
 
     nombreMsg.style.display = nombre.value.length > 0 && !okNombre ? 'block' : 'none';
+    telefonoMsg.style.display = telefono.value.length > 0 && !okTelefono ? 'block' : 'none';
     usernameMsg.style.display = okUsername ? 'none' : 'block';
 
-    registrarBtn.disabled = !(okNombre && okUsername);
-    return okNombre && okUsername;
+    registrarBtn.disabled = !(okNombre && okTelefono && okUsername);
+    return okNombre && okTelefono && okUsername;
   }
 
   nombre.addEventListener('input', validar);
   nombre.addEventListener('blur', validar);
+  telefono.addEventListener('input', validar);
+  telefono.addEventListener('blur', validar);
 
   registrarBtn.addEventListener('click', () => {
     if (!validar()) return;
 
     const payload = {
-      miniapp: 'registro_tienda',
-      nombreCompleto: nombre.value.trim(),
-      username: usernameDetectado
+      tipo: 'autoregistro',
+      nombre: nombre.value.trim(),
+      telefono: telefono.value.trim(),
+      referidor: ''
     };
 
     if (tg?.sendData) {
