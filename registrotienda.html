@@ -63,13 +63,6 @@
         <div id="telefonoMsg" class="error">Ingresa un teléfono válido de al menos 8 dígitos.</div>
       </div>
 
-      <div class="input-group">
-        <label for="username">Usuario de Telegram</label>
-        <input id="username" type="text" readonly />
-        <div class="helper">Se carga automáticamente desde Telegram.</div>
-        <div id="usernameMsg" class="error">No pudimos identificar tu usuario de Telegram. Cierra y vuelve a abrir el registro desde el bot.</div>
-      </div>
-
       <button id="registrarBtn" type="button" disabled>REGISTRARME</button>
     </div>
 
@@ -88,22 +81,12 @@
   }
 
   const nombre = document.getElementById('nombre');
-  const username = document.getElementById('username');
   const telefono = document.getElementById('telefono');
   const nombreMsg = document.getElementById('nombreMsg');
   const telefonoMsg = document.getElementById('telefonoMsg');
-  const usernameMsg = document.getElementById('usernameMsg');
   const registrarBtn = document.getElementById('registrarBtn');
   const formView = document.getElementById('formView');
   const successView = document.getElementById('successView');
-
-  const limpiarUsername = (valor) => (valor || '').trim().replace(/^@+/, '');
-
-  const telegramUsername = tg?.initDataUnsafe?.user?.username || '';
-  const usernameUrl = new URLSearchParams(window.location.search).get('username') || '';
-  const usernameDetectado = limpiarUsername(telegramUsername || usernameUrl);
-
-  username.value = usernameDetectado ? '@' + usernameDetectado : '';
 
   function nombreValido(valor) {
     const s = valor.trim();
@@ -123,14 +106,12 @@
   function validar() {
     const okNombre = nombreValido(nombre.value);
     const okTelefono = telefonoValido(telefono.value);
-    const okUsername = usernameDetectado.length >= 5;
 
     nombreMsg.style.display = nombre.value.length > 0 && !okNombre ? 'block' : 'none';
     telefonoMsg.style.display = telefono.value.length > 0 && !okTelefono ? 'block' : 'none';
-    usernameMsg.style.display = okUsername ? 'none' : 'block';
 
-    registrarBtn.disabled = !(okNombre && okTelefono && okUsername);
-    return okNombre && okTelefono && okUsername;
+    registrarBtn.disabled = !(okNombre && okTelefono);
+    return okNombre && okTelefono;
   }
 
   nombre.addEventListener('input', validar);
