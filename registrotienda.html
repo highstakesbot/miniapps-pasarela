@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Registro Tienda</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root{
+      --primary:#2f80ed; --primary-hover:#246bc4; --bg:#f5f8fb; --card:#ffffff;
+      --text:#222222; --muted:#6b7280; --border:#dfe6ee; --error:#d84a4a; --readonly:#eef3f8;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; min-height:100vh; font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+      background:var(--bg); color:var(--text); display:flex; align-items:center; justify-content:center; padding:18px;
+    }
+    .container{
+      width:100%; max-width:420px; background:var(--card); padding:28px 22px;
+      border-radius:16px; box-shadow:0 8px 20px rgba(0,0,0,.08);
+    }
+    h1{margin:0 0 8px; text-align:center; color:var(--primary); font-size:25px}
+    .subtitle{text-align:center; color:var(--muted); margin:0 0 24px; font-size:14px}
+    .input-group{margin-bottom:18px}
+    label{display:block; font-weight:600; margin-bottom:7px}
+    input{
+      width:100%; padding:12px 13px; border:1px solid var(--border);
+      border-radius:10px; font-size:16px; background:#fff;
+    }
+    input:focus{outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(47,128,237,.14)}
+    input[readonly]{background:var(--readonly); color:#4b5563}
+    .helper{font-size:12px; color:var(--muted); margin-top:6px}
+    .error{font-size:12px; color:var(--error); margin-top:6px; display:none}
+    button{
+      width:100%; border:0; border-radius:11px; background:var(--primary); color:white;
+      padding:14px 16px; font-size:17px; font-weight:700; cursor:pointer; margin-top:4px;
+    }
+    button:hover{background:var(--primary-hover)}
+    button:disabled{opacity:.55; cursor:not-allowed}
+    .success{display:none; text-align:center; padding:18px 8px 4px}
+    .success .icon{font-size:44px; margin-bottom:8px}
+    .success h2{margin:0 0 8px; color:#18864b}
+    .success p{color:var(--muted); margin:0}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="formView">
+      <h1>Registro Tienda</h1>
+      <p class="subtitle">Completa tu nombre para comenzar.</p>
+
+      <div class="input-group">
+        <label for="nombre">Nombre completo</label>
+        <input id="nombre" type="text" placeholder="Ej. José Manuel Flores Mendoza" autocomplete="name" />
+        <div class="helper">Escribe nombres y apellidos completos.</div>
+        <div id="nombreMsg" class="error">Ingresa tu nombre completo. Usa solo letras y espacios.</div>
+      </div>
+
+      <div class="input-group">
+        <label for="username">Usuario de Telegram</label>
+        <input id="username" type="text" readonly />
+        <div class="helper">Se carga automáticamente desde Telegram.</div>
+        <div id="usernameMsg" class="error">No pudimos identificar tu usuario de Telegram. Cierra y vuelve a abrir el registro desde el bot.</div>
+      </div>
+
+      <button id="registrarBtn" type="button" disabled>REGISTRARME</button>
+    </div>
+
+    <div id="successView" class="success">
+      <div class="icon">✅</div>
+      <h2>Datos enviados</h2>
+      <p>Espera la confirmación del bot.</p>
+    </div>
+  </div>
+
+<script>
+  const tg = window.Telegram?.WebApp;
+  if (tg) {
+    tg.ready();
+    tg.expand();
+  }
+
+  const nombre = document.getElementById('nombre');
+  const username = document.getElementById('username');
+  const nombreMsg = document.getElementById('nombreMsg');
+  const usernameMsg = document.getElementById('usernameMsg');
+  const registrarBtn = document.getElementById('registrarBtn');
+  const formView = document.getElementById('formView');
+  const successView = document.getElementById('successView');
+
+  const limpiarUsername = (valor) => (valor || '').trim().replace(/^@+/, '');
+
+  const telegramUsername = tg?.initDataUnsafe?.user?.username || '';
+  const usernameUrl = new URLSearchParams(window.location.search).get('username') || '';
+  const usernameDetectado = limpiarUsername(telegramUsername || usernameUrl);
+
+  username.value = usernameDetectado ? '@' + usernameDetectado : '';
+
+  function nombreValido(valor) {
+    const s = valor.trim();
+    if (s.length < 5) return false;
+
+    const partes = s.split(/\s+/).filter(Boolean);
+    if (partes.length < 2) return false;
+
+    return /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' -]+$/.test(s);
+  }
+
+  function validar() {
+    const okNombre = nombreValido(nombre.value);
+    const okUsername = usernameDetectado.length >= 5;
+
+    nombreMsg.style.display = nombre.value.length > 0 && !okNombre ? 'block' : 'none';
+    usernameMsg.style.display = okUsername ? 'none' : 'block';
+
+    registrarBtn.disabled = !(okNombre && okUsername);
+    return okNombre && okUsername;
+  }
+
+  nombre.addEventListener('input', validar);
+  nombre.addEventListener('blur', validar);
+
+  registrarBtn.addEventListener('click', () => {
+    if (!validar()) return;
+
+    const payload = {
+      miniapp: 'registro_tienda',
+      nombreCompleto: nombre.value.trim(),
+      username: usernameDetectado
+    };
+
+    if (tg?.sendData) {
+      registrarBtn.disabled = true;
+      registrarBtn.textContent = 'ENVIANDO...';
+      tg.sendData(JSON.stringify(payload));
+      formView.style.display = 'none';
+      successView.style.display = 'block';
+    } else {
+      alert('Abre este registro desde el bot de Telegram.\n\n' + JSON.stringify(payload, null, 2));
+    }
+  });
+
+  validar();
+</script>
+</body>
+</html>
